@@ -159,12 +159,24 @@ namespace GHelper.UI.Nebula
         public static string FamilyRender(string model)
         {
             string m = (model ?? "").Trim().ToUpperInvariant();
-            if (m.StartsWith("GA") || m.StartsWith("GU")) return "hero-laptop-angle";   // Zephyrus
-            if (m.StartsWith("GV") || m.StartsWith("GZ")) return "family-flow";
-            if (m.StartsWith("RC")) return "family-ally";
-            if (m.StartsWith("FA") || m.StartsWith("FX")) return "family-tuf";
-            if (m.Length > 1 && m[0] == 'G' && char.IsDigit(m[1])) return "family-strix";
-            if (m.StartsWith("G")) return "family-zephyrus";
+            // marketing name first ("ROG Zephyrus G16 GA605WI", "ROG Strix SCAR 18 G834JZ", "TUF Gaming A15 FA507NV")
+            if (m.Contains("ZEPHYRUS")) return "hero-laptop-angle";
+            if (m.Contains("FLOW")) return "family-flow";
+            if (m.Contains("ALLY")) return "family-ally";
+            if (m.Contains("STRIX") || m.Contains("SCAR")) return "family-strix";
+            if (m.Contains("TUF")) return "family-tuf";
+            if (m.Contains("VIVOBOOK") || m.Contains("ZENBOOK") || m.Contains("PROART")) return "family-vivobook";
+            // then the model code anywhere in the string
+            var code = System.Text.RegularExpressions.Regex.Match(m, @"([A-Z]{1,2})(\d{3})[A-Z0-9]*");
+            if (code.Success)
+            {
+                string pre = code.Groups[1].Value;
+                if (pre is "GA" or "GU") return "hero-laptop-angle";
+                if (pre is "GV" or "GZ") return "family-flow";
+                if (pre is "RC") return "family-ally";
+                if (pre is "FA" or "FX") return "family-tuf";
+                if (pre == "G") return "family-strix";
+            }
             return "family-vivobook";
         }
 
