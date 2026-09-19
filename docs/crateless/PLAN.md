@@ -188,3 +188,21 @@ Overlay   00000000-0000-0000-0000-000000000000  Сбалансированный
 
 Бэкапы исходных планов: `%LOCALAPPDATA%\PowerOverlayGuard\backup-original\*.pow`
 Скрипт повторного применения: `%LOCALAPPDATA%\PowerOverlayGuard\tune-powerplans.ps1`
+
+## Приложение C — итоги аудита E0 (2026-09-19)
+
+Карта функций заполнена по коду: `Crateless-Design-Kit-Nebula-v2/docs/03_FEATURE_MAP_RU.csv`.
+Ключевые факты для фазы 3:
+
+- Режимы: `AsusACPI.PerformanceBalanced=0 / Turbo=1 / Silent=2 / FullSpeed=3 / Manual=4`;
+  пользовательские профили `app/Mode/Modes.cs`, индексы 3..19, база через `mode_base_N`.
+- GPU: `GPUModeEco=0 / Standard=1 / Ultimate=2`. «Optimized» — не аппаратный режим, а флаг
+  `gpu_auto` (`GPUModeControl.AutoGPUMode`).
+- Кривые вентиляторов: ровно 8 точек (16 байт), оси 20–110 °C / 0–100 %, `AsusFan {CPU, GPU, Mid, XGM}`,
+  гистерезис 5 уровней. Отдельного «direct fan control» нет — `SetFanRange` только fallback.
+- Обратное чтение лимитов: только `GPU_BASE`/`GPU_POWER` через `DeviceGet` и
+  `ModeControl.ReadRyzenLimits()` (SMU). Для большинства `PPT_*` readback нет — в UI
+  различать «команда принята» и «подтверждено».
+- Нет в форке: compact mode, экспорт/импорт конфига, поэлементный список служб, GPU undervolt.
+- Не покрыто дизайном: ROG Ally/Handheld (`app/Ally`, `app/Handheld.cs`), гарнитуры,
+  скрытые переключатели `app/Extra.cs` (E/P-ядра, VRAM/APU, ASPM, boot sound, Keystone, ACPI debug).
