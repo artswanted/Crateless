@@ -138,6 +138,8 @@ namespace GHelper.UI.Nebula.Pages
             c.Txt(NebulaText.T("Conflicts with ASUS services are explained next to the unavailable setting.", "Конфликт со службой ASUS объясняем рядом с недоступной настройкой."), 256, by + 130, c.F(11), th.Faint);
         }
 
+        public override float ContentHeight => 139 + Math.Max(160, 110 + keys.Count * 73) + 16 + 148 + 20;
+
         public override bool Click(string id, Point at, NebulaForm form)
         {
             if (id.StartsWith("keys:set:"))

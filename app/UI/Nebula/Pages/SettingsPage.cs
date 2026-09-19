@@ -104,6 +104,8 @@ namespace GHelper.UI.Nebula.Pages
             c.Hit(c.R(1054 - c.TextWidth(quit, f) - 8, 812, c.TextWidth(quit, f) + 16, 26), "settings:quit");
         }
 
+        public override float ContentHeight => 850;
+
         public override bool Click(string id, Point at, NebulaForm form)
         {
             switch (id)

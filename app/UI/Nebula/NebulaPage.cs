@@ -13,6 +13,9 @@ namespace GHelper.UI.Nebula
         /// <summary>Called on the UI thread after each sensor tick and when the page opens.</summary>
         public virtual void Refresh(bool opened) { }
 
+        /// <summary>Bottom edge of the page content in design px; the shell scrolls when it exceeds the window.</summary>
+        public virtual float ContentHeight => 1013;
+
         public abstract void Paint(NebulaCanvas c);
 
         /// <summary>Returns true when the click was handled. `at` is the client point (for menus).</summary>

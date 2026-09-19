@@ -124,8 +124,9 @@ namespace GHelper.UI.Nebula.Pages
 
             // ---- tuning -------------------------------------------------------------------------------
             var visible = All.Where(t => t.Visible).ToList();
-            float h = nvidia ? 110 + visible.Count * 68 + 30 : 102;
-            c.Surface(236, 596, 818, h);
+            int rowsN = (visible.Count + 1) / 2;
+            float h = nvidia ? 110 + rowsN * 74 + 30 : 102;
+            c.Surface(236, 596, 1158, h);
             c.Txt(NebulaText.T("Advanced · NVIDIA tuning", "Расширенные · тюнинг NVIDIA"), 256, 626, c.F(15, FontStyle.Bold), th.Text);
             if (!nvidia)
             {
@@ -134,16 +135,18 @@ namespace GHelper.UI.Nebula.Pages
             }
             c.Txt(NebulaText.T("Changes apply immediately for the current mode and are stored per mode.", "Изменения применяются сразу для текущего режима и хранятся по режимам."), 256, 647, c.F(11), th.Faint);
 
-            float y = 690;
-            foreach (var t in visible)
+            const float colW = 549;
+            for (int i = 0; i < visible.Count; i++)
             {
-                c.Txt(t.Label, 256, y, c.F(12), th.Muted);
+                var t = visible[i];
+                float x = 256 + (i % 2) * (colW + 40);
+                float y = 690 + (i / 2) * 74;
+                c.Txt(t.Label, x, y, c.F(12), th.Muted);
                 string v = t.Format is not null ? t.Format(t.Value) : t.Value + t.Suffix;
-                c.Txt(v, 1034, y, c.F(14, FontStyle.Bold), th.Text, StringAlignment.Far);
-                c.Slider(256, y + 18, 778, (t.Value - t.Min) / (float)Math.Max(1, t.Max - t.Min), "slider:gpu:" + t.Key);
-                y += 68;
+                c.Txt(v, x + colW, y, c.F(14, FontStyle.Bold), th.Text, StringAlignment.Far);
+                c.Slider(x, y + 18, colW, (t.Value - t.Min) / (float)Math.Max(1, t.Max - t.Min), "slider:gpu:" + t.Key);
             }
-            c.Button(1034 - 160, y - 6, 160, 36, NebulaText.T("Reset tuning", "Сбросить тюнинг"), "gpu:reset", primary: false);
+            c.Button(1374 - 160, 596 + h - 50, 160, 36, NebulaText.T("Reset tuning", "Сбросить тюнинг"), "gpu:reset", primary: false);
         }
 
         private static void Tile(NebulaCanvas c, float x, float y, string icon, string title, string line1, string line2, bool active, string id, bool enabled = true)
@@ -158,6 +161,8 @@ namespace GHelper.UI.Nebula.Pages
             c.Txt(line2, x + 20, y + 109, c.F(11), th.Muted);
             if (enabled && id.Length > 0) c.Hit(r, id);
         }
+
+        public override float ContentHeight => nvidia ? 596 + 110 + ((All.Count(t => t.Visible) + 1) / 2) * 74 + 50 : 720;
 
         public override void Drag(string id, float t, bool done)
         {

@@ -211,6 +211,15 @@ namespace GHelper.UI.Nebula.Pages
             if (uvResult.Length > 0) c.Txt(uvResult, 256, uy + 220, c.F(10), th.Warning);
         }
 
+        public override float ContentHeight
+        {
+            get
+            {
+                float limitsH = 120 + Math.Max(1, All.Count(l => l.Visible)) * 74 + 40;
+                return 299 + limitsH + (CpuInfo.IsAMD ? 16 + 236 : 0) + 20;
+            }
+        }
+
         private static void DropRow(NebulaCanvas c, float x, float y, float w, string value, string id, bool enabled)
         {
             var th = c.Theme;

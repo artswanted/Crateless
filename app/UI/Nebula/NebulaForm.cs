@@ -43,6 +43,8 @@ namespace GHelper.UI.Nebula
         private string shownTip = "";
         private string dragId = "";
         private RectangleF dragTrack;
+        private float scroll; // design px
+        private const float ViewBottom = 1013f;
 
         private static readonly (string id, string icon, Func<string> title, bool legacy)[] Rail =
         {
@@ -130,6 +132,7 @@ namespace GHelper.UI.Nebula
             {
                 page = p;
                 pageId = id;
+                scroll = 0;
                 host.Visible = false;
                 p.Refresh(true);
                 Invalidate();
@@ -271,8 +274,35 @@ namespace GHelper.UI.Nebula
             if (page is not null)
             {
                 PaintHeader(canvas, page.Title, page.Subtitle);
+
+                float maxScroll = Math.Max(0, page.ContentHeight - ViewBottom);
+                scroll = Math.Clamp(scroll, 0, maxScroll);
+                float off = S(scroll);
+
+                var saved = g.Save();
+                g.SetClip(new RectangleF(S(RailW) + 1, S(130), ClientSize.Width, S(ViewBottom + 12) - S(130)));
+                g.TranslateTransform(0, -off);
+                int before = canvas.Hits.Count;
                 try { page.Paint(canvas); }
                 catch (Exception ex) { Logger.WriteLine($"Nebula paint {page.Id}: {ex.Message}"); }
+                g.Restore(saved);
+
+                for (int i = before; i < canvas.Hits.Count; i++)
+                {
+                    var h = canvas.Hits[i];
+                    var r = h.rect; r.Offset(0, -off);
+                    if (r.Bottom < S(130) || r.Top > S(ViewBottom + 12)) r = RectangleF.Empty;
+                    canvas.Hits[i] = (r, h.id, h.tip);
+                }
+
+                if (maxScroll > 0)
+                {
+                    float trackTop = S(139), trackH = S(ViewBottom) - S(139);
+                    float thumbH = Math.Max(S(30), trackH * (ViewBottom - 139) / (page.ContentHeight - 139));
+                    float thumbY = trackTop + (trackH - thumbH) * (scroll / maxScroll);
+                    using var b = new SolidBrush(Color.FromArgb(120, theme.Line));
+                    g.FillRectangle(b, ClientSize.Width - S(8), thumbY, S(4), thumbH);
+                }
             }
         }
 
@@ -373,6 +403,16 @@ namespace GHelper.UI.Nebula
             }
         }
 
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            base.OnMouseWheel(e);
+            if (page is null) return;
+            float maxScroll = Math.Max(0, page.ContentHeight - ViewBottom);
+            if (maxScroll <= 0) return;
+            scroll = Math.Clamp(scroll - e.Delta / 120f * 60f, 0, maxScroll);
+            Invalidate();
+        }
+
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
@@ -408,7 +448,7 @@ namespace GHelper.UI.Nebula
                 {
                     var plot = FanPage.PlotRect;
                     float tx = Math.Clamp((p.X / k - plot.X) / plot.Width, 0f, 1f);
-                    float ty = Math.Clamp((p.Y / k - plot.Y) / plot.Height, 0f, 1f);
+                    float ty = Math.Clamp(((p.Y + S(scroll)) / k - plot.Y) / plot.Height, 0f, 1f);
                     fan.DragPoint(int.Parse(dragId[14..]), tx, ty, (ModifierKeys & Keys.Shift) == Keys.Shift);
                     if (done) fan.Drag(dragId, 0, true);
                 }
