@@ -1,0 +1,110 @@
+namespace GHelper.UI.Nebula
+{
+    /// <summary>
+    /// Sensor snapshot for the shell. Read on a worker thread once per second while the window
+    /// is visible; pages only read the fields. Uses the existing HardwareControl readers and
+    /// never wakes a sleeping dGPU (NvidiaGpuControl returns null for it).
+    /// </summary>
+    public static class NebulaSensors
+    {
+        public const int HistoryLength = 90;
+
+        public static readonly Queue<float> CpuHistory = new();
+        public static readonly Queue<float> GpuHistory = new();
+
+        public static int? IgpuUse, IgpuTemp, IgpuPower;
+        public static float? DgpuPower;
+        public static DateTime LastRead = DateTime.MinValue;
+
+        public static int? CpuMhz;
+        public static (long usedGb, long totalGb)? Disk;
+
+        private static System.Diagnostics.PerformanceCounter? cpuPerf;
+        private static bool cpuPerfFailed;
+        private static readonly Lazy<int> cpuBaseMhz = new(() =>
+        {
+            try
+            {
+                using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+                return key?.GetValue("~MHz") is int v ? v : 0;
+            }
+            catch { return 0; }
+        });
+        private static int diskTick;
+
+        // AppConfig.IsAMDiGPU() means "iGPU-only laptop"; here we want "has an AMD iGPU at all".
+        public static readonly bool HasIgpu = AppConfig.IsAMDiGPU() || PawnIO.CpuInfo.Name.Contains("Radeon", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Blocking read; call from a worker thread.</summary>
+        public static void Read()
+        {
+            HardwareControl.ReadSensors();
+            HardwareControl.cpuUsage = HardwareControl.GetCPUUsage();
+            HardwareControl.InitCPUPowerAsync();
+            HardwareControl.cpuPower = HardwareControl.GetCPUPower();
+
+            try
+            {
+                var gc = HardwareControl.GpuControl;
+                bool awake = HardwareControl.gpuTemp is > 0;
+                HardwareControl.gpuUsage = awake ? gc?.GetGpuUse() : null;
+                DgpuPower = awake ? gc?.GetGpuPower() : null;
+            }
+            catch { HardwareControl.gpuUsage = null; DgpuPower = null; }
+
+            if (HasIgpu)
+            {
+                try
+                {
+                    var i = HardwareControl.AmdApu().GetiGpuSensors();
+                    IgpuUse = i.use; IgpuTemp = i.temp; IgpuPower = i.gfxPower;
+                }
+                catch { IgpuUse = IgpuTemp = IgpuPower = null; }
+            }
+
+            var ram = HardwareControl.GetRAMInfo();
+            HardwareControl.ramUsage = ram?.percent;
+            HardwareControl.ramUsedMb = ram?.usedMb;
+
+            // CPU frequency: % Processor Performance × base clock (same source Task Manager uses)
+            if (!cpuPerfFailed)
+            {
+                try
+                {
+                    cpuPerf ??= new System.Diagnostics.PerformanceCounter("Processor Information", "% Processor Performance", "_Total", true);
+                    float perf = cpuPerf.NextValue();
+                    int baseMhz = cpuBaseMhz.Value;
+                    CpuMhz = perf > 0 && baseMhz > 0 ? (int)Math.Round(baseMhz * perf / 100f) : null;
+                }
+                catch { cpuPerfFailed = true; CpuMhz = null; }
+            }
+
+            // system drive, every 30 s
+            if (diskTick++ % 30 == 0)
+            {
+                try
+                {
+                    var d = new DriveInfo(Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\");
+                    long total = d.TotalSize / (1024L * 1024 * 1024);
+                    long used = (d.TotalSize - d.TotalFreeSpace) / (1024L * 1024 * 1024);
+                    Disk = (used, total);
+                }
+                catch { Disk = null; }
+            }
+        }
+
+        /// <summary>Call on the UI thread after Read().</summary>
+        public static void Commit()
+        {
+            LastRead = DateTime.Now;
+            Push(CpuHistory, HardwareControl.cpuTemp);
+            Push(GpuHistory, HardwareControl.gpuTemp);
+        }
+
+        private static void Push(Queue<float> q, float? v)
+        {
+            q.Enqueue(v is > 0 ? v.Value : float.NaN);
+            while (q.Count > HistoryLength) q.Dequeue();
+        }
+    }
+}

@@ -53,7 +53,7 @@ namespace GHelper
         static long lastLostFocus;
 
         bool isGpuSection = true;
-        bool isMuxGpu = true;
+        public bool isMuxGpu = true;
 
         bool batteryMouseOver = false;
         bool batteryFullMouseOver = false;
@@ -1162,6 +1162,21 @@ namespace GHelper
             }
         }
 
+        /// <summary>Nebula shell bridges: updates window, app update check, quit.</summary>
+        public void UpdatesToggle() => ButtonUpdates_Click(null, EventArgs.Empty);
+        public void CheckAppUpdate() => updateControl.Update();
+        public void QuitApp() => ButtonQuit_Click(null, EventArgs.Empty);
+
+        /// <summary>Opens/closes the AniMe Matrix / Slash window (Nebula shell bridge).</summary>
+        public void MatrixToggle() => ButtonMatrix_Click(null, EventArgs.Empty);
+
+        /// <summary>Opens/closes the Extra window (used by the Nebula shell as a V1 bridge).</summary>
+        public void ExtraToggle()
+        {
+            if (UI.NebulaTheme.IsEnabled) { Program.NebulaPage("keyboard"); return; }
+            ButtonKeyboard_Click(null, EventArgs.Empty);
+        }
+
         public void FansInit()
         {
             if (fansForm == null || fansForm.Text == "") return;
@@ -1176,6 +1191,7 @@ namespace GHelper
 
         public void FansToggle(int index = 0)
         {
+            if (UI.NebulaTheme.IsEnabled) { Program.NebulaPage(index == 1 ? "gpu" : index == 2 ? "power" : "fan"); return; }
             if (fansForm == null || fansForm.Text == "")
             {
                 fansForm = new Fans();
@@ -2212,6 +2228,12 @@ namespace GHelper
                 return;
             }
 
+            OpenPeripheral(iph);
+        }
+
+        /// <summary>Opens the settings window of a connected ASUS peripheral (also used by the Nebula shell).</summary>
+        public void OpenPeripheral(IPeripheral iph)
+        {
             if (iph.DeviceType() == PeripheralType.Mouse)
             {
                 AsusMouse? am = iph as AsusMouse;

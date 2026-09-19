@@ -1,4 +1,4 @@
-using GHelper.Ally;
+﻿using GHelper.Ally;
 using GHelper.Battery;
 using GHelper.Display;
 using GHelper.Gpu;
@@ -413,8 +413,43 @@ namespace GHelper
             SchedulePowerCheck();
         }
 
+        public static UI.Nebula.NebulaForm? nebulaForm;
+        public static UI.Nebula.NebulaCompactForm? nebulaCompact;
+
+        /// <summary>Shows the compact fly-out and remembers it as the tray view.</summary>
+        public static void NebulaCompactToggle()
+        {
+            AppConfig.Set("nebula_compact", 1);
+            nebulaCompact ??= new UI.Nebula.NebulaCompactForm();
+            nebulaCompact.Toggle();
+        }
+
+        /// <summary>Shows the Nebula shell on the given page (rail id).</summary>
+        public static void NebulaPage(string page)
+        {
+            nebulaForm ??= new UI.Nebula.NebulaForm();
+            nebulaForm.ShowPage(page);
+        }
+
         public static void SettingsToggle(bool checkForFocus = true, bool trayClick = false)
         {
+            if (UI.NebulaTheme.IsEnabled)
+            {
+                // Nebula shell (config "theme": "nebula"): the classic window stays available
+                // through ShowLegacySettings() until every section is redesigned.
+                if (AppConfig.Is("nebula_compact") && trayClick)
+                {
+                    if (nebulaForm is { Visible: true }) nebulaForm.Hide();
+                    nebulaCompact ??= new UI.Nebula.NebulaCompactForm();
+                    nebulaCompact.Toggle();
+                    return;
+                }
+                if (nebulaCompact is { Visible: true }) nebulaCompact.Hide();
+                nebulaForm ??= new UI.Nebula.NebulaForm();
+                nebulaForm.Toggle();
+                return;
+            }
+
             if (settingsForm.Visible)
             {
                 // If helper window is not on top, this just focuses on the app again
@@ -429,6 +464,14 @@ namespace GHelper
                 }
             }
             else
+            {
+                ShowLegacySettings();
+            }
+        }
+
+        /// <summary>Shows the classic main window bottom-right, regardless of the active shell.</summary>
+        public static void ShowLegacySettings()
+        {
             {
                 var screen = Screen.PrimaryScreen;
                 if (screen is null) screen = Screen.FromControl(settingsForm);

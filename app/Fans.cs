@@ -895,6 +895,7 @@ namespace GHelper
 
         public void FormPosition()
         {
+            if (Embedded) return;
 
             if (Height > Program.settingsForm.Height)
             {
@@ -1209,7 +1210,7 @@ namespace GHelper
 
             try
             {
-                if (chartCount > 2)
+                if (chartCount > 2 && !Embedded)
                     Size = MinimumSize = new Size(Size.Width, Math.Max(MinimumSize.Height, (int)(ControlHelper.GetDpiScale(this).Value * (chartCount * 200 + 100))));
 
             }
