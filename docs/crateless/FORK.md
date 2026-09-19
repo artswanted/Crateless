@@ -62,6 +62,10 @@
 | Стало | `<AssemblyName>Crateless</AssemblyName>` |
 | Риск мёржа | низкий |
 
+Побочный эффект: `EmbeddedResource` для `Pawn\RyzenSMU.bin` и `Pawn\IntelMSR.bin` должны иметь
+`<LogicalName>$(AssemblyName).*.bin</LogicalName>` — код в `app/Pawn/` ищет ресурс по имени сборки,
+с жёстким `GHelper.*` приложение падает на старте. При мёрже csproj следить за этими строками.
+
 `<StartupObject>GHelper.Program</StartupObject>` (строка 11) **не трогаем** — namespace
 остаётся `GHelper`, см. решение в [PLAN.md §4](PLAN.md#4-принятые-решения).
 
