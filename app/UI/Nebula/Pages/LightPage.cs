@@ -40,21 +40,24 @@ namespace GHelper.UI.Nebula.Pages
             c.Txt(NebulaText.T("Pick the mood of your laptop.", "Выбери настроение своего ноутбука."), 124, 280, c.F(16), th.Muted);
 
             var box = c.R(124, 300, 780, 490);
-            var hero = NebulaAssets.HeroScaled((int)box.Width);
-            if (hero is not null)
+            int topW = (int)Math.Min(box.Width, box.Height);
+            var top = NebulaAssets.Scaled("hero-laptop-top", topW);
+            if (top is not null)
             {
-                float ratio = Math.Min(box.Width / hero.Width, box.Height / hero.Height);
-                float w = hero.Width * ratio, h = hero.Height * ratio;
-                var dst = new RectangleF(box.X + (box.Width - w) / 2, box.Y + (box.Height - h) / 2, w, h);
-                using var clip = NebulaCanvas.Rounded(dst, c.S(16));
-                var saved = c.G.Clip;
-                c.G.SetClip(clip, CombineMode.Intersect);
-                c.G.DrawImage(hero, dst);
-                // tint the render with the current colour so the preview follows the choice
-                using (var tint = new SolidBrush(Color.FromArgb(36, Aura.Color1)))
-                    c.G.FillRectangle(tint, dst);
-                c.FadeEdges(dst, c.S(48));
-                c.G.Clip = saved;
+                var dst = new RectangleF(box.X + (box.Width - top.Width) / 2, box.Y + (box.Height - top.Height) / 2, top.Width, top.Height);
+                c.G.DrawImage(top, dst);
+                // keyboard glow layer follows the chosen colour (white when the effect has no fixed colour)
+                bool colourless = mode is AuraMode.AuraRainbow or AuraMode.AuraColorCycle or AuraMode.HEATMAP or AuraMode.GPUMODE or AuraMode.AMBIENT or AuraMode.BATTERY or AuraMode.AUDIO or AuraMode.AUDIOPULSE;
+                var glow = NebulaAssets.TintedGlow(colourless ? th.Accent : Aura.Color1, topW);
+                if (glow is not null && InputDispatcher.GetBacklight() > 0)
+                {
+                    int levels = Math.Max(1, AppConfig.Get("max_brightness", 3));
+                    float alpha = 0.35f + 0.65f * Math.Clamp(InputDispatcher.GetBacklight(), 0, levels) / levels;
+                    var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = alpha };
+                    using var ia = new System.Drawing.Imaging.ImageAttributes();
+                    ia.SetColorMatrix(cm);
+                    c.G.DrawImage(glow, Rectangle.Round(dst), 0, 0, glow.Width, glow.Height, GraphicsUnit.Pixel, ia);
+                }
             }
             c.Pill(132, 806, modeName.ToUpperInvariant(), th.AccentBg, th.Accent);
 

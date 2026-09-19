@@ -91,7 +91,9 @@ namespace GHelper.UI.Nebula.Pages
                 var d = devices[i];
                 var r = c.R(x, 664, 192, 46);
                 c.Card(r, 10, c.IsHover("overview:dev:" + i) ? th.Raised : th.Card, th.Line);
-                c.IconAt(d.DeviceType() switch { PeripheralType.Keyboard => "keyboard", PeripheralType.Headset => "heart", _ => "mouse" }, x + 12, 675, 24, true);
+                var thumb = NebulaAssets.Scaled(NebulaAssets.DeviceRender(d.DeviceType(), d.GetDisplayName()), (int)c.S(40));
+                if (thumb is not null) c.G.DrawImage(thumb, c.S(x + 6), c.S(667), c.S(40), c.S(40));
+                else c.IconAt("mouse", x + 12, 675, 24, true);
                 string name = d.GetDisplayName();
                 if (name.Length > 18) name = name[..17] + "…";
                 c.Txt(name, x + 46, 684, c.F(11, FontStyle.Bold), th.Text);

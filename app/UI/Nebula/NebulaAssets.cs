@@ -76,9 +76,12 @@ namespace GHelper.UI.Nebula
             }
             catch (Exception ex) { Logger.WriteLine("Nebula hero: " + ex.Message); }
 
-            // Renders that ASUS software already placed on this machine (never redistributed by us).
-            var local = FindLocalDeviceRender();
-            if (local is not null)
+            // Render that ASUS software already placed on this machine (never redistributed by us).
+            // Kept as asus-render.png and used only when the user opts in (config nebula_asus_render).
+            string asusCopy = "";
+            try { asusCopy = Directory.GetFiles(Logger.appPath, "asus-render.*").FirstOrDefault() ?? ""; } catch { }
+            var local = asusCopy.Length > 0 ? asusCopy : FindLocalDeviceRender();
+            if (local is not null && AppConfig.Is("nebula_asus_render"))
             {
                 try
                 {
@@ -89,8 +92,8 @@ namespace GHelper.UI.Nebula
                     // keep a private copy so the render survives an Armoury Crate uninstall
                     try
                     {
-                        string keep = Path.Combine(Logger.appPath, "hero" + Path.GetExtension(local).ToLowerInvariant());
-                        if (!File.Exists(keep)) File.Copy(local, keep);
+                        string keep = Path.Combine(Logger.appPath, "asus-render" + Path.GetExtension(local).ToLowerInvariant());
+                        if (!File.Exists(keep) && local != keep) File.Copy(local, keep);
                     }
                     catch (Exception ex) { Logger.WriteLine("Nebula hero copy: " + ex.Message); }
                     return new Bitmap(ms);
@@ -98,7 +101,7 @@ namespace GHelper.UI.Nebula
                 catch (Exception ex) { Logger.WriteLine("Nebula hero: " + ex.Message); }
             }
 
-            return Load("Nebula.hero-laptop.jpg");
+            return Load("Nebula." + FamilyRender(AppConfig.GetModelShort()) + ".png") ?? Load("Nebula.hero-laptop-angle.png");
         });
 
         /// <summary>
@@ -137,6 +140,89 @@ namespace GHelper.UI.Nebula
             }
             catch (Exception ex) { Logger.WriteLine("Nebula local render: " + ex.Message); }
             return null;
+        }
+
+        /// <summary>True when a render from ASUS software is available on this machine.</summary>
+        public static bool HasAsusRender()
+        {
+            try { if (Directory.GetFiles(Logger.appPath, "asus-render.*").Length > 0) return true; } catch { }
+            return FindLocalDeviceRender() is not null;
+        }
+
+        /// <summary>Drops cached hero bitmaps so the next paint re-reads the source chain.</summary>
+        public static void ResetHero()
+        {
+            foreach (var key in Cache.Keys.Where(k => k.StartsWith("hero")).ToList()) Cache.TryRemove(key, out _);
+        }
+
+        /// <summary>Own illustration per model family (see docs: family-*.png).</summary>
+        public static string FamilyRender(string model)
+        {
+            string m = (model ?? "").Trim().ToUpperInvariant();
+            if (m.StartsWith("GA") || m.StartsWith("GU")) return "hero-laptop-angle";   // Zephyrus
+            if (m.StartsWith("GV") || m.StartsWith("GZ")) return "family-flow";
+            if (m.StartsWith("RC")) return "family-ally";
+            if (m.StartsWith("FA") || m.StartsWith("FX")) return "family-tuf";
+            if (m.Length > 1 && m[0] == 'G' && char.IsDigit(m[1])) return "family-strix";
+            if (m.StartsWith("G")) return "family-zephyrus";
+            return "family-vivobook";
+        }
+
+        /// <summary>Top-down render for the lighting page and its keyboard glow layer.</summary>
+        public static Image? HeroTop => Load("Nebula.hero-laptop-top.png");
+        public static Image? HeroTopGlow => Load("Nebula.hero-laptop-top-glow.png");
+
+        /// <summary>Any embedded Nebula image scaled to a width, cached.</summary>
+        public static Image? Scaled(string name, int width)
+        {
+            if (width <= 0) return null;
+            return Cache.GetOrAdd($"scaled:{name}:{width}", _ =>
+            {
+                var src = Load("Nebula." + name + ".png");
+                if (src is null) return null;
+                return src.Width == width ? src : ControlHelper.ResizeImage(src, (float)width / src.Width);
+            });
+        }
+
+        /// <summary>Illustration for a peripheral by its type and display name (mouse-*, headset-*, device-*).</summary>
+        public static string DeviceRender(Peripherals.PeripheralType type, string displayName)
+        {
+            string n = (displayName ?? "").ToLowerInvariant();
+            switch (type)
+            {
+                case Peripherals.PeripheralType.Mouse:
+                    if (n.Contains("keris")) return "mouse-keris";
+                    if (n.Contains("gladius")) return "mouse-gladius";
+                    if (n.Contains("harpe")) return "mouse-harpe";
+                    if (n.Contains("chakram")) return "mouse-chakram";
+                    if (n.Contains("impact")) return "mouse-impact";
+                    if (n.Contains("carry")) return "mouse-carry";
+                    if (n.Contains("tuf")) return "mouse-tuf";
+                    return "mouse-generic";
+                case Peripherals.PeripheralType.Headset:
+                    if (n.Contains("cetra") && (n.Contains("true") || n.Contains("tws") || n.Contains("speednova"))) return "headset-cetra-tws";
+                    if (n.Contains("cetra")) return "headset-cetra-wired";
+                    if (n.Contains("delta")) return "headset-delta";
+                    if (n.Contains("strix go") || n.Contains("go ")) return "headset-strix-go";
+                    if (n.Contains("fusion")) return "headset-fusion";
+                    if (n.Contains("pelta")) return "headset-pelta";
+                    return "headset-generic";
+                default:
+                    return "device-keyboard";
+            }
+        }
+
+        /// <summary>Glow layer tinted with a colour (cached per colour and width).</summary>
+        public static Image? TintedGlow(Color color, int width)
+        {
+            if (width <= 0) return null;
+            return Cache.GetOrAdd($"glow:{color.ToArgb()}:{width}", _ =>
+            {
+                var glow = HeroTopGlow;
+                if (glow is null) return null;
+                var scaled = glow.Width == width ? glow : ControlHelper.ResizeImage(glow, (float)width / glow.Width);
+                return ControlHelper.TintImage(scaled, color);
+            });
         }
 
         /// <summary>Hero render fitted into the given width, cached by width.</summary>

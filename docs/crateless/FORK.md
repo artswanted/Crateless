@@ -132,6 +132,14 @@ dotnet publish app/GHelper.sln --configuration Release --runtime win-x64 \
   -p:PublishSingleFile=true --no-self-contained
 ```
 
+### 8a. `app/Gpu/NVidia/NvidiaGpuControl.cs` — `GetActiveApplications()` ✅
+
+| | |
+|---|---|
+| Что | добавлен публичный метод, возвращающий процессы на dGPU с тем же фильтром, что у `KillGPUApps` |
+| Зачем | список процессов на странице «Графика» новой оболочки |
+| Риск мёржа | низкий — метод добавлен перед `KillGPUApps`, ничего не изменено; при конфликте оставить оба |
+
 ### 8. Ссылки на вики upstream ⬜
 
 | | |

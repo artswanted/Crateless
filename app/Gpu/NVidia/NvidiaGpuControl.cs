@@ -160,6 +160,20 @@ public class NvidiaGpuControl : IGpuControl
         "audiodg", "ctfloader", "spoolsv", "wlanext", "msdtc",
     };
 
+    /// <summary>User processes currently holding the dGPU (system and own process filtered out). Crateless UI.</summary>
+    public Process[] GetActiveApplications()
+    {
+        if (!IsValid) return Array.Empty<Process>();
+        int currentPid = Process.GetCurrentProcess().Id;
+        try
+        {
+            return _internalGpu!.GetActiveApplications()
+                .Where(p => { try { return p.Id != currentPid && p.SessionId != 0 && !_systemProcessNames.Contains(p.ProcessName); } catch { return false; } })
+                .ToArray();
+        }
+        catch (Exception ex) { Logger.WriteLine(ex.Message); return Array.Empty<Process>(); }
+    }
+
     public void KillGPUApps()
     {
         if (!IsValid) return;

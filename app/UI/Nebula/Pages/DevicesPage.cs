@@ -48,7 +48,9 @@ namespace GHelper.UI.Nebula.Pages
                 bool sel = i == selected;
                 var r = c.R(252, y, 240, 70);
                 c.Card(r, 8, sel ? th.AccentBg : c.IsHover("dev:" + i) ? th.Raised : th.Card, sel ? th.Accent : th.Line);
-                c.IconAt(IconFor(d), 268, y + 23, 24, sel);
+                var thumb = NebulaAssets.Scaled(NebulaAssets.DeviceRender(d.DeviceType(), SafeName(d)), (int)c.S(44));
+                if (thumb is not null) c.G.DrawImage(thumb, c.S(260), c.S(y + 13), c.S(44), c.S(44));
+                else c.IconAt(IconFor(d), 268, y + 23, 24, sel);
                 c.Txt(Trim(SafeName(d), 22), 311, y + 26, c.F(13, FontStyle.Bold), sel ? th.Accent : th.Text);
                 c.Txt(StatusLine(d), 311, y + 49, c.F(9), th.Muted);
                 c.Hit(r, "dev:" + i);
@@ -64,6 +66,12 @@ namespace GHelper.UI.Nebula.Pages
             {
                 c.Txt(NebulaText.T("Laptop", "Ноутбук"), 544, 169, c.F(15, FontStyle.Bold), th.Text);
                 c.Txt(AppConfig.GetModelShort(), 544, 190, c.F(11), th.Muted);
+                var lap = NebulaAssets.HeroScaled((int)c.S(360));
+                if (lap is not null)
+                {
+                    float r = Math.Min(c.S(360) / lap.Width, c.S(240) / lap.Height);
+                    c.G.DrawImage(lap, c.S(609), c.S(320), lap.Width * r, lap.Height * r);
+                }
                 c.Txt(NebulaText.T("Keyboard lighting and keys live in their own sections.", "Подсветка и клавиши ноутбука — в своих разделах."), 544, 240, c.F(12), th.Muted);
                 c.Button(544, 262, 220, 36, NebulaText.T("Lighting", "Подсветка"), "dev:light", primary: false);
                 c.Button(776, 262, 220, 36, NebulaText.T("Keys", "Клавиши"), "dev:keys", primary: false);
@@ -74,7 +82,9 @@ namespace GHelper.UI.Nebula.Pages
                 c.Txt(SafeName(d), 544, 169, c.F(15, FontStyle.Bold), th.Text);
                 c.Txt(TypeName(d) + " · " + (d.IsDeviceReady ? NebulaText.T("connected", "подключено") : NebulaText.T("not ready", "не готово")), 544, 190, c.F(11), th.Muted);
 
-                c.IconAt(IconFor(d), 760, 230, 48, true);
+                var big = NebulaAssets.Scaled(NebulaAssets.DeviceRender(d.DeviceType(), SafeName(d)), (int)c.S(200));
+                if (big is not null) c.G.DrawImage(big, c.S(689), c.S(196), c.S(200), c.S(200));
+                else c.IconAt(IconFor(d), 760, 230, 48, true);
                 if (d.HasBattery() && d.IsDeviceReady)
                 {
                     string bat = NebulaText.T("CHARGE", "ЗАРЯД") + " " + d.Battery + "%" + (d.Charging ? " ⚡" : "");

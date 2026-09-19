@@ -26,6 +26,13 @@ namespace GHelper.UI.Nebula.Pages
         private readonly Tune power = new() { Key = "gpu_power", Suffix = " W" };
         private Tune[] All => new[] { core, memory, clock, boost, temp, power };
 
+        private sealed record Proc(int Pid, string Name, double Cpu, long MemMb);
+        private List<Proc> procs = new();
+        private readonly Dictionary<int, (TimeSpan cpu, long tick)> prevCpu = new();
+        private int tick;
+        private bool procsLoading;
+        private bool procsSupported;
+
         private bool nvidia;
         private bool eco;
         private int gpuPowerBase;
@@ -33,6 +40,7 @@ namespace GHelper.UI.Nebula.Pages
 
         public override void Refresh(bool opened)
         {
+            if (opened || tick++ % 5 == 0) LoadProcs();
             if (!opened) return;
             nvidia = false;
             eco = false;
@@ -89,6 +97,45 @@ namespace GHelper.UI.Nebula.Pages
             });
         }
 
+        private void LoadProcs()
+        {
+            if (procsLoading) return;
+            procsLoading = true;
+            Task.Run(() =>
+            {
+                try
+                {
+                    if (HardwareControl.GpuControl is NvidiaGpuControl nv && !eco)
+                    {
+                        procsSupported = true;
+                        long now = Environment.TickCount64;
+                        var list = new List<Proc>();
+                        foreach (var p in nv.GetActiveApplications())
+                        {
+                            try
+                            {
+                                var t = p.TotalProcessorTime;
+                                double cpu = 0;
+                                if (prevCpu.TryGetValue(p.Id, out var prev) && now > prev.tick)
+                                    cpu = (t - prev.cpu).TotalMilliseconds / (now - prev.tick) / Environment.ProcessorCount * 100.0;
+                                prevCpu[p.Id] = (t, now);
+                                list.Add(new Proc(p.Id, p.ProcessName, Math.Clamp(cpu, 0, 100), p.WorkingSet64 / (1024 * 1024)));
+                            }
+                            catch { }
+                        }
+                        foreach (var dead in prevCpu.Keys.Where(k => list.All(x => x.Pid != k)).ToList()) prevCpu.Remove(dead);
+                        procs = list.OrderByDescending(x => x.Cpu).ThenByDescending(x => x.MemMb).ToList();
+                    }
+                    else { procsSupported = false; procs = new(); }
+                }
+                catch (Exception ex) { Logger.WriteLine("dGPU apps: " + ex.Message); }
+                procsLoading = false;
+                try { Program.nebulaForm?.BeginInvoke(Program.nebulaForm.Invalidate); } catch { }
+            });
+        }
+
+        private float ProcCardH => 78 + Math.Max(1, Math.Min(procs.Count, 8)) * 30 + (procs.Count > 8 ? 22 : 0);
+
         public override void Paint(NebulaCanvas c)
         {
             var th = c.Theme;
@@ -122,31 +169,71 @@ namespace GHelper.UI.Nebula.Pages
             c.Txt(NebulaText.T("Apps holding the dGPU keep it awake and block Eco.", "Приложения на dGPU не дают ей уснуть и мешают Eco."), 256, 553, c.F(12), th.Muted);
             c.Button(813, 516, 221, 36, NebulaText.T("Close dGPU apps", "Закрыть приложения dGPU"), "gpu:kill", primary: false, enabled: !eco);
 
+            // ---- processes ------------------------------------------------------------------------------
+            float py = 596;
+            float ph = ProcCardH;
+            c.Surface(236, py, 1158, ph);
+            c.Txt(NebulaText.T("Processes on the dGPU", "Процессы на dGPU"), 256, py + 30, c.F(15, FontStyle.Bold), th.Text);
+            c.Txt(NebulaText.T("Apps using the discrete GPU right now. Close them to let it sleep or to switch to Eco.",
+                               "Приложения, которые сейчас используют дискретную видеокарту. Закрой их, чтобы она уснула или для перехода в Eco."), 256, py + 51, c.F(11), th.Faint);
+            c.Button(1374 - 300, py + 18, 130, 32, NebulaText.T("Refresh", "Обновить"), "gpu:procs:refresh", primary: false);
+            c.Button(1374 - 160, py + 18, 160, 32, NebulaText.T("Stop all", "Остановить все"), "gpu:procs:killall", primary: false, enabled: procs.Count > 0);
+
+            float ry = py + 78;
+            if (!procsSupported)
+                c.Txt(eco ? NebulaText.T("dGPU is off.", "dGPU выключена.") : NebulaText.T("Process list is available for NVIDIA dGPU only.", "Список процессов доступен только для NVIDIA dGPU."), 256, ry + 12, c.F(12), th.Muted);
+            else if (procs.Count == 0)
+                c.Txt(procsLoading ? NebulaText.T("Reading…", "Читаем…") : NebulaText.T("No user processes on the dGPU.", "Пользовательских процессов на dGPU нет."), 256, ry + 12, c.F(12), th.Muted);
+            else
+            {
+                c.Txt(NebulaText.T("Process", "Процесс"), 256, ry, c.F(10, FontStyle.Bold), th.Faint);
+                c.Txt("PID", 760, ry, c.F(10, FontStyle.Bold), th.Faint, StringAlignment.Far);
+                c.Txt(NebulaText.T("CPU", "Процессор"), 960, ry, c.F(10, FontStyle.Bold), th.Faint, StringAlignment.Far);
+                c.Txt(NebulaText.T("Memory", "Память"), 1180, ry, c.F(10, FontStyle.Bold), th.Faint, StringAlignment.Far);
+                ry += 8;
+                foreach (var p in procs.Take(8))
+                {
+                    ry += 22;
+                    c.Txt(p.Name.Length > 40 ? p.Name[..39] + "…" : p.Name, 256, ry, c.F(12), th.Text);
+                    c.Txt(p.Pid.ToString(), 760, ry, c.F(11), th.Muted, StringAlignment.Far);
+                    c.Txt(p.Cpu.ToString("0.0") + " %", 960, ry, c.F(11), th.Muted, StringAlignment.Far);
+                    c.Txt(p.MemMb.ToString("N0") + " MB", 1180, ry, c.F(11), th.Muted, StringAlignment.Far);
+                    var kr = c.R(1330, ry - 15, 44, 22);
+                    c.Card(kr, 6, c.IsHover("gpu:procs:kill:" + p.Pid) ? th.Danger : th.Raised);
+                    c.Txt("✕", 1352, ry, c.F(11, FontStyle.Bold), c.IsHover("gpu:procs:kill:" + p.Pid) ? th.Bg : th.Muted, StringAlignment.Center);
+                    c.Hit(kr, "gpu:procs:kill:" + p.Pid, NebulaText.T("End process", "Завершить процесс"));
+                    ry += 8;
+                }
+                if (procs.Count > 8)
+                    c.Txt(NebulaText.T($"and {procs.Count - 8} more…", $"и ещё {procs.Count - 8}…"), 256, ry + 24, c.F(11), th.Faint);
+            }
+
             // ---- tuning -------------------------------------------------------------------------------
+            float ty0 = py + ph + 16;
             var visible = All.Where(t => t.Visible).ToList();
             int rowsN = (visible.Count + 1) / 2;
             float h = nvidia ? 110 + rowsN * 74 + 30 : 102;
-            c.Surface(236, 596, 1158, h);
-            c.Txt(NebulaText.T("Advanced · NVIDIA tuning", "Расширенные · тюнинг NVIDIA"), 256, 626, c.F(15, FontStyle.Bold), th.Text);
+            c.Surface(236, ty0, 1158, h);
+            c.Txt(NebulaText.T("Advanced · NVIDIA tuning", "Расширенные · тюнинг NVIDIA"), 256, ty0 + 30, c.F(15, FontStyle.Bold), th.Text);
             if (!nvidia)
             {
-                c.Txt(tuneNote.Length > 0 ? tuneNote : NebulaText.T("Reading GPU state…", "Читаем состояние GPU…"), 256, 658, c.F(12), th.Muted);
+                c.Txt(tuneNote.Length > 0 ? tuneNote : NebulaText.T("Reading GPU state…", "Читаем состояние GPU…"), 256, ty0 + 62, c.F(12), th.Muted);
                 return;
             }
-            c.Txt(NebulaText.T("Changes apply immediately for the current mode and are stored per mode.", "Изменения применяются сразу для текущего режима и хранятся по режимам."), 256, 647, c.F(11), th.Faint);
+            c.Txt(NebulaText.T("Changes apply immediately for the current mode and are stored per mode.", "Изменения применяются сразу для текущего режима и хранятся по режимам."), 256, ty0 + 51, c.F(11), th.Faint);
 
             const float colW = 549;
             for (int i = 0; i < visible.Count; i++)
             {
                 var t = visible[i];
                 float x = 256 + (i % 2) * (colW + 40);
-                float y = 690 + (i / 2) * 74;
+                float y = ty0 + 94 + (i / 2) * 74;
                 c.Txt(t.Label, x, y, c.F(12), th.Muted);
                 string v = t.Format is not null ? t.Format(t.Value) : t.Value + t.Suffix;
                 c.Txt(v, x + colW, y, c.F(14, FontStyle.Bold), th.Text, StringAlignment.Far);
                 c.Slider(x, y + 18, colW, (t.Value - t.Min) / (float)Math.Max(1, t.Max - t.Min), "slider:gpu:" + t.Key);
             }
-            c.Button(1374 - 160, 596 + h - 50, 160, 36, NebulaText.T("Reset tuning", "Сбросить тюнинг"), "gpu:reset", primary: false);
+            c.Button(1374 - 160, ty0 + h - 50, 160, 36, NebulaText.T("Reset tuning", "Сбросить тюнинг"), "gpu:reset", primary: false);
         }
 
         private static void Tile(NebulaCanvas c, float x, float y, string icon, string title, string line1, string line2, bool active, string id, bool enabled = true)
@@ -162,7 +249,7 @@ namespace GHelper.UI.Nebula.Pages
             if (enabled && id.Length > 0) c.Hit(r, id);
         }
 
-        public override float ContentHeight => nvidia ? 596 + 110 + ((All.Count(t => t.Visible) + 1) / 2) * 74 + 50 : 720;
+        public override float ContentHeight => 596 + ProcCardH + 16 + (nvidia ? 110 + ((All.Count(t => t.Visible) + 1) / 2) * 74 + 50 : 122);
 
         public override void Drag(string id, float t, bool done)
         {
@@ -186,6 +273,16 @@ namespace GHelper.UI.Nebula.Pages
 
         public override bool Click(string id, Point at, NebulaForm form)
         {
+            if (id.StartsWith("gpu:procs:kill:") && int.TryParse(id[15..], out int pid))
+            {
+                Task.Run(() =>
+                {
+                    try { Helpers.ProcessHelper.KillByProcess(System.Diagnostics.Process.GetProcessById(pid)); } catch (Exception ex) { Logger.WriteLine("kill " + pid + ": " + ex.Message); }
+                    System.Threading.Thread.Sleep(400);
+                    LoadProcs();
+                });
+                return true;
+            }
             switch (id)
             {
                 case "gpu:mode:eco": Program.gpuControl.SetGPUMode(AsusACPI.GPUModeEco); return true;
@@ -196,7 +293,17 @@ namespace GHelper.UI.Nebula.Pages
                     Program.settingsForm.VisualiseGPUMode();
                     Program.gpuControl.AutoGPUMode(true);
                     return true;
-                case "gpu:kill": Task.Run(Program.gpuControl.KillGPUApps); return true;
+                case "gpu:kill": Task.Run(() => { Program.gpuControl.KillGPUApps(); LoadProcs(); }); return true;
+                case "gpu:procs:refresh": LoadProcs(); return true;
+                case "gpu:procs:killall":
+                    Task.Run(() =>
+                    {
+                        foreach (var p in procs.ToList())
+                            try { Helpers.ProcessHelper.KillByProcess(System.Diagnostics.Process.GetProcessById(p.Pid)); } catch (Exception ex) { Logger.WriteLine("kill " + p.Name + ": " + ex.Message); }
+                        System.Threading.Thread.Sleep(500);
+                        LoadProcs();
+                    });
+                    return true;
                 case "gpu:reset":
                     foreach (var t in All) AppConfig.RemoveMode(t.Key);
                     Task.Run(() =>

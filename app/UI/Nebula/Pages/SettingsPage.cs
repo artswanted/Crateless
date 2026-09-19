@@ -52,12 +52,16 @@ namespace GHelper.UI.Nebula.Pages
             var th = c.Theme;
 
             // ---- app -------------------------------------------------------------------------------
-            c.Surface(236, 139, 818, 234);
+            c.Surface(236, 139, 818, 250);
             c.Txt(NebulaText.T("Application", "Приложение"), 256, 169, c.F(15, FontStyle.Bold), th.Text);
             c.ValueRow(256, 206, 778, NebulaText.T("Theme", "Тема"), ThemeName(), "settings:theme");
             c.ValueRow(256, 265, 778, NebulaText.T("Language", "Язык"), LanguageName(AppConfig.GetString("language") ?? ""), "settings:language");
             c.Txt(NebulaText.T("Start with Windows", "Запускать вместе с Windows"), 256, 341, c.F(13), th.Text);
             c.Toggle(996, 324, startup, "settings:startup");
+
+            bool hasAsus = NebulaAssets.HasAsusRender();
+            c.Txt(NebulaText.T("Use the ASUS render found on this PC", "Использовать рендер ASUS, найденный на этом ПК"), 256, 366 + 0, c.F(11), hasAsus ? th.Muted : th.Faint);
+            c.Toggle(996, 349, hasAsus && AppConfig.Is("nebula_asus_render"), "settings:asusrender", hasAsus);
 
             // ---- system & diagnostics ------------------------------------------------------------------
             c.Surface(236, 389, 399, 309);
@@ -164,6 +168,10 @@ namespace GHelper.UI.Nebula.Pages
                 case "settings:appupdate": Program.settingsForm.CheckAppUpdate(); return true;
                 case "settings:repo":
                     try { Process.Start(new ProcessStartInfo("https://github.com/artswanted/Crateless") { UseShellExecute = true }); } catch { }
+                    return true;
+                case "settings:asusrender":
+                    AppConfig.Set("nebula_asus_render", AppConfig.Is("nebula_asus_render") ? 0 : 1);
+                    NebulaAssets.ResetHero();
                     return true;
                 case "settings:extra": form.ShowPage("extra"); return true;
                 case "settings:quit": Program.settingsForm.QuitApp(); return true;
