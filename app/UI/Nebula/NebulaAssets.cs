@@ -76,9 +76,12 @@ namespace GHelper.UI.Nebula
             }
             catch (Exception ex) { Logger.WriteLine("Nebula hero: " + ex.Message); }
 
-            // Renders that ASUS software already placed on this machine (never redistributed by us).
-            var local = FindLocalDeviceRender();
-            if (local is not null)
+            // Render that ASUS software already placed on this machine (never redistributed by us).
+            // Kept as asus-render.png and used only when the user opts in (config nebula_asus_render).
+            string asusCopy = "";
+            try { asusCopy = Directory.GetFiles(Logger.appPath, "asus-render.*").FirstOrDefault() ?? ""; } catch { }
+            var local = asusCopy.Length > 0 ? asusCopy : FindLocalDeviceRender();
+            if (local is not null && AppConfig.Is("nebula_asus_render"))
             {
                 try
                 {
@@ -89,8 +92,8 @@ namespace GHelper.UI.Nebula
                     // keep a private copy so the render survives an Armoury Crate uninstall
                     try
                     {
-                        string keep = Path.Combine(Logger.appPath, "hero" + Path.GetExtension(local).ToLowerInvariant());
-                        if (!File.Exists(keep)) File.Copy(local, keep);
+                        string keep = Path.Combine(Logger.appPath, "asus-render" + Path.GetExtension(local).ToLowerInvariant());
+                        if (!File.Exists(keep) && local != keep) File.Copy(local, keep);
                     }
                     catch (Exception ex) { Logger.WriteLine("Nebula hero copy: " + ex.Message); }
                     return new Bitmap(ms);
@@ -137,6 +140,19 @@ namespace GHelper.UI.Nebula
             }
             catch (Exception ex) { Logger.WriteLine("Nebula local render: " + ex.Message); }
             return null;
+        }
+
+        /// <summary>True when a render from ASUS software is available on this machine.</summary>
+        public static bool HasAsusRender()
+        {
+            try { if (Directory.GetFiles(Logger.appPath, "asus-render.*").Length > 0) return true; } catch { }
+            return FindLocalDeviceRender() is not null;
+        }
+
+        /// <summary>Drops cached hero bitmaps so the next paint re-reads the source chain.</summary>
+        public static void ResetHero()
+        {
+            foreach (var key in Cache.Keys.Where(k => k.StartsWith("hero")).ToList()) Cache.TryRemove(key, out _);
         }
 
         /// <summary>Own illustration per model family (see docs: family-*.png).</summary>
