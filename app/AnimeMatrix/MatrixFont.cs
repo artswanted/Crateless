@@ -8,7 +8,7 @@ namespace GHelper.AnimeMatrix
     {
         const string PackageUrl = "https://dlcdnets.asus.com/pub/ASUS/GamingNB/AppforWin10/ROGFont/ROG_Font_V1.5.zip";
 
-        static readonly string fontFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GHelper", "matrix.otf");
+        static readonly string fontFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Crateless", "matrix.otf");
         static readonly PrivateFontCollection collection = new PrivateFontCollection();
 
         static FontFamily? family = FindInstalled() ?? LoadFile();

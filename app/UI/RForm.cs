@@ -53,7 +53,21 @@ namespace GHelper.UI
         {
             flatTheme = AppConfig.GetString("theme")?.ToLower() == "flat";
 
-            if (darkTheme)
+            var nebula = NebulaTheme.Current(darkTheme);
+            if (nebula is not null)
+            {
+                buttonMain = nebula.Raised;
+                buttonSecond = nebula.Card;
+
+                formBack = nebula.Bg;
+                foreMain = nebula.Text;
+                borderMain = nebula.Line;
+                borderSecond = nebula.Line;
+
+                chartMain = nebula.Card;
+                chartGrid = nebula.Line;
+            }
+            else if (darkTheme)
             {
                 buttonMain = Color.FromArgb(255, 46, 46, 46);
                 buttonSecond = Color.FromArgb(255, 36, 36, 36);

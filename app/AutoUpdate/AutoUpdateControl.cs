@@ -12,7 +12,7 @@ namespace GHelper.AutoUpdate
 
         SettingsForm settings;
 
-        public string versionUrl = "https://github.com/seerge/g-helper/releases";
+        public string versionUrl = "https://github.com/artswanted/Crateless/releases";
         public bool update = false;
 
         static long lastUpdate;
@@ -73,8 +73,8 @@ namespace GHelper.AutoUpdate
 
                 using (var httpClient = new HttpClient())
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "G-Helper App");
-                    var json = await httpClient.GetStringAsync("https://api.github.com/repos/seerge/g-helper/releases/latest");
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", "Crateless App");
+                    var json = await httpClient.GetStringAsync("https://api.github.com/repos/artswanted/Crateless/releases/latest");
                     var config = JsonSerializer.Deserialize<JsonElement>(json);
                     var tag = config.GetProperty("tag_name").ToString().Replace("v", "");
                     var assets = config.GetProperty("assets");
@@ -109,7 +109,7 @@ namespace GHelper.AutoUpdate
 
                         if (AppConfig.GetString("skip_version") != tag)
                         {
-                            DialogResult dialogResult = settings.ShowMessage(Properties.Strings.DownloadUpdate + ": G-Helper " + tag + "?", "Update", MessageBoxButtons.YesNo);
+                            DialogResult dialogResult = settings.ShowMessage(Properties.Strings.DownloadUpdate + ": Crateless " + tag + "?", "Update", MessageBoxButtons.YesNo);
                             if (dialogResult == DialogResult.Yes)
                                 AutoUpdate(url);
                             else
@@ -151,7 +151,7 @@ namespace GHelper.AutoUpdate
             using (HttpClient client = new HttpClient())
             {
 
-                client.DefaultRequestHeaders.Add("User-Agent", "G-Helper App");
+                client.DefaultRequestHeaders.Add("User-Agent", "Crateless App");
                 Logger.WriteLine(requestUri);
                 Logger.WriteLine(exeDir);
                 Logger.WriteLine(zipName);

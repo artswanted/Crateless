@@ -121,7 +121,7 @@
     <value>Beschleunigung</value>
   </data>
   <data name="ACPIError" xml:space="preserve">
-    <value>Verbindung zu ASUS ACPI fehlgeschlagen. G-Helper kann nicht ausgeführt werden. Bitte installiere ASUS System Control Interface.</value>
+    <value>Verbindung zu ASUS ACPI fehlgeschlagen. Crateless kann nicht ausgeführt werden. Bitte installiere ASUS System Control Interface.</value>
   </data>
   <data name="AlertAPUMemoryRestart" xml:space="preserve">
     <value>Gerät neu starten, um Änderungen anzuwenden?</value>
@@ -163,7 +163,7 @@
     <value>Die Anwendung läuft bereits</value>
   </data>
   <data name="AppAlreadyRunningText" xml:space="preserve">
-    <value>G-Helper läuft bereits. Bitte prüfe den Systemtray.</value>
+    <value>Crateless läuft bereits. Bitte prüfe den Systemtray.</value>
   </data>
   <data name="Apply" xml:space="preserve">
     <value>Anwenden</value>
@@ -726,7 +726,7 @@ Trotzdem fortfahren?</value>
     <value>One Zone</value>
   </data>
   <data name="OpenGHelper" xml:space="preserve">
-    <value>G-Helper Fenster öffnen</value>
+    <value>Crateless Fenster öffnen</value>
   </data>
   <data name="OptimalDisplayBrightness" xml:space="preserve">
     <value>Optimale Bildschirmhelligkeit</value>
