@@ -6,7 +6,7 @@ namespace GHelper.Helpers
 {
     public static class ProcessHelper
     {
-        private const string ExitEventName = "Global\\GHelperApp-Exit";
+        private const string ExitEventName = "Global\\CratelessApp-Exit";
         private static EventWaitHandle? exitEvent;
         private static long lastAdmin;
 
