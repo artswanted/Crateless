@@ -38,6 +38,9 @@ namespace GHelper.UI
         private static extern int DwmSetWindowAttribute(nint hwnd, int attr, int[] attrValue, int attrSize);
 
         public bool darkTheme = false;
+
+        /// <summary>True when the form is hosted as a child inside the Nebula shell (no own window).</summary>
+        public bool Embedded { get; set; }
         private bool themeInitialized = false;
         protected override CreateParams CreateParams
         {

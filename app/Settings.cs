@@ -1163,7 +1163,11 @@ namespace GHelper
         }
 
         /// <summary>Opens/closes the Extra window (used by the Nebula shell as a V1 bridge).</summary>
-        public void ExtraToggle() => ButtonKeyboard_Click(null, EventArgs.Empty);
+        public void ExtraToggle()
+        {
+            if (UI.NebulaTheme.IsEnabled) { Program.NebulaPage("keyboard"); return; }
+            ButtonKeyboard_Click(null, EventArgs.Empty);
+        }
 
         public void FansInit()
         {
@@ -1179,6 +1183,7 @@ namespace GHelper
 
         public void FansToggle(int index = 0)
         {
+            if (UI.NebulaTheme.IsEnabled) { Program.NebulaPage(index == 1 ? "gpu" : index == 2 ? "power" : "fan"); return; }
             if (fansForm == null || fansForm.Text == "")
             {
                 fansForm = new Fans();

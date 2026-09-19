@@ -37,6 +37,10 @@ namespace GHelper.UI.Nebula
         private readonly Queue<float> cpuHistory = new();
         private readonly Queue<float> gpuHistory = new();
 
+        private string page = "overview";
+        private readonly Panel host = new() { AutoScroll = true, Visible = false };
+        private Form? embedded;
+
         private string hover = "";
         private readonly List<(RectangleF rect, string id, string tip)> hits = new();
         private readonly ToolTip tip = new() { InitialDelay = 400, ReshowDelay = 200 };
@@ -81,6 +85,7 @@ namespace GHelper.UI.Nebula
             DoubleBuffered = true;
 
             PlaceOnScreen();
+            Controls.Add(host);
 
             refreshTimer.Tick += (_, _) => Refresh(false);
             FormClosing += NebulaForm_FormClosing;
@@ -111,7 +116,113 @@ namespace GHelper.UI.Nebula
             InitTheme();
             theme = NebulaTheme.Current(darkTheme) ?? (darkTheme ? NebulaTheme.Dark : NebulaTheme.Light);
             BackColor = theme.Bg;
+            host.BackColor = theme.Bg;
+            (embedded as RForm)?.InitTheme();
             Invalidate();
+        }
+
+        // ---- pages -----------------------------------------------------------------------------
+        /// <summary>Shows the window on the given rail page.</summary>
+        public void ShowPage(string id)
+        {
+            SetPage(id);
+            if (!Visible)
+            {
+                if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+                Show();
+            }
+            Activate();
+        }
+
+        private void SetPage(string id)
+        {
+            switch (id)
+            {
+                case "overview":
+                    page = id;
+                    host.Visible = false;
+                    Invalidate();
+                    return;
+
+                case "power":
+                case "fan":
+                case "gpu":
+                {
+                    var fans = Program.settingsForm.fansForm;
+                    if (fans is null || fans.Text == "" || fans.IsDisposed)
+                    {
+                        fans = new Fans { Embedded = true };
+                        Program.settingsForm.fansForm = fans;
+                    }
+                    Embed(fans);
+                    fans.ToggleNavigation(id == "gpu" ? 1 : id == "power" ? 2 : 0);
+                    page = id;
+                    Invalidate();
+                    return;
+                }
+
+                case "keyboard":
+                {
+                    var extra = Program.settingsForm.extraForm;
+                    if (extra is null || extra.Text == "" || extra.IsDisposed)
+                    {
+                        extra = new Extra { Embedded = true };
+                        Program.settingsForm.extraForm = extra;
+                    }
+                    Embed(extra);
+                    page = id;
+                    Invalidate();
+                    return;
+                }
+
+                default:
+                    // display / battery / light / mouse / settings: classic window until redesigned
+                    Program.ShowLegacySettings();
+                    return;
+            }
+        }
+
+        /// <summary>Hosts a legacy RForm as a child control inside the content area.</summary>
+        private void Embed(Form form)
+        {
+            if (embedded == form && form.Parent == host)
+            {
+                host.Visible = true;
+                return;
+            }
+
+            if (embedded is not null && embedded != form) embedded.Visible = false;
+
+            if (form.Parent != host)
+            {
+                if (form is RForm r) r.Embedded = true;
+                form.TopLevel = false;
+                form.FormBorderStyle = FormBorderStyle.None;
+                form.MinimumSize = Size.Empty;
+                form.MaximumSize = Size.Empty;
+                form.Location = new Point(0, 0);
+                host.Controls.Add(form);
+            }
+
+            embedded = form;
+            host.Visible = true;
+            form.Visible = true;
+            form.BringToFront();
+            LayoutHost();
+        }
+
+        private void LayoutHost()
+        {
+            int x = (int)S(RailW) + 1 + (int)S(24);
+            int y = (int)S(TopBarH) + 1 + (int)S(20);
+            host.Bounds = new Rectangle(x, y, Math.Max(100, ClientSize.Width - x - (int)S(16)), Math.Max(100, ClientSize.Height - y - (int)S(12)));
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            k = Math.Min(ClientSize.Width / DesignW, ClientSize.Height / DesignH);
+            LayoutHost();
         }
 
         // ---- show / hide ---------------------------------------------------------------------
@@ -288,7 +399,7 @@ namespace GHelper.UI.Nebula
 
             g.Clear(theme.Bg);
             PaintChrome(g);
-            PaintOverview(g);
+            if (page == "overview") PaintOverview(g);
         }
 
         private void PaintChrome(Graphics g)
@@ -312,7 +423,7 @@ namespace GHelper.UI.Nebula
             for (int i = 0; i < Rail.Length; i++)
             {
                 var item = Rail[i];
-                bool active = item.id == "overview";
+                bool active = item.id == page;
                 bool hovered = hover == "rail:" + item.id;
                 var slot = R(16, y, 54, 48);
 
@@ -730,6 +841,8 @@ namespace GHelper.UI.Nebula
 
         private void Activate(string id, Point at)
         {
+            if (id.StartsWith("rail:")) { SetPage(id[5..]); return; }
+
             if (id.StartsWith("mode:"))
             {
                 if (id == "mode:more")
@@ -753,18 +866,7 @@ namespace GHelper.UI.Nebula
 
             switch (id)
             {
-                case "rail:overview": return;
-                case "rail:power":
-                case "rail:fan": Program.settingsForm.FansToggle(0); return;
-                case "rail:gpu": Program.settingsForm.FansToggle(1); return;
-                case "rail:keyboard": Program.settingsForm.ExtraToggle(); return;
-                case "rail:display":
-                case "rail:battery":
-                case "rail:light":
-                case "rail:mouse":
-                case "rail:settings": Program.ShowLegacySettings(); return;
-
-                case "fans:configure": Program.settingsForm.FansToggle(0); return;
+                case "fans:configure": SetPage("fan"); return;
 
                 case "quick:gpu": ShowGpuMenu(at); return;
                 case "quick:screen": ScreenControl.ToggleScreenRate(); Invalidate(); return;

@@ -1,4 +1,4 @@
-using GHelper.Ally;
+﻿using GHelper.Ally;
 using GHelper.Battery;
 using GHelper.Display;
 using GHelper.Gpu;
@@ -413,7 +413,14 @@ namespace GHelper
             SchedulePowerCheck();
         }
 
-        static UI.Nebula.NebulaForm? nebulaForm;
+        public static UI.Nebula.NebulaForm? nebulaForm;
+
+        /// <summary>Shows the Nebula shell on the given page (rail id).</summary>
+        public static void NebulaPage(string page)
+        {
+            nebulaForm ??= new UI.Nebula.NebulaForm();
+            nebulaForm.ShowPage(page);
+        }
 
         public static void SettingsToggle(bool checkForFocus = true, bool trayClick = false)
         {
@@ -421,7 +428,6 @@ namespace GHelper
             {
                 // Nebula shell (config "theme": "nebula"): the classic window stays available
                 // through ShowLegacySettings() until every section is redesigned.
-                if (settingsForm.Visible) settingsForm.HideAll();
                 nebulaForm ??= new UI.Nebula.NebulaForm();
                 nebulaForm.Toggle();
                 return;

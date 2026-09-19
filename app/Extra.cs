@@ -919,6 +919,7 @@ namespace GHelper
 
         private void Keyboard_Shown(object? sender, EventArgs e)
         {
+            if (Embedded) return;
             if (Height > Program.settingsForm.Height)
             {
                 var top = Program.settingsForm.Top + Program.settingsForm.Height - Height;
