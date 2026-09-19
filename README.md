@@ -22,6 +22,12 @@ machines it quietly overrides the Windows power mode a few seconds after you cha
 The modes, curves and limits themselves live in the BIOS. Crateless talks to the same
 ASUS driver, applies your choice once and stays out of the way.
 
+G-Helper already does all of that, and does it well, but its window is deliberately bare:
+a column of buttons and sliders. Crateless is for people who want exactly the same
+backend with an interface closer to what Armoury Crate looks like: a home screen with the
+device and live readings, sections for cooling, graphics, screen, battery and lighting, a
+compact fly-out from the tray. Nothing else changes.
+
 ## What it does
 
 - Silent / Balanced / Turbo plus custom modes, each pinned to a Windows power plan and
