@@ -36,7 +36,9 @@ namespace GHelper.UI.Nebula
 
         private int? igpuUse, igpuTemp, igpuPower;
         private float? dgpuPower;
-        private static readonly bool hasIgpu = AppConfig.IsAMDiGPU();
+        // AppConfig.IsAMDiGPU() means "iGPU-only laptop"; here we want "has an AMD iGPU at all"
+        // (the ADL reader finds the integrated adapter regardless of the model list).
+        private static readonly bool hasIgpu = AppConfig.IsAMDiGPU() || PawnIO.CpuInfo.Name.Contains("Radeon", StringComparison.OrdinalIgnoreCase);
 
         private readonly Queue<float> cpuHistory = new();
         private readonly Queue<float> gpuHistory = new();
