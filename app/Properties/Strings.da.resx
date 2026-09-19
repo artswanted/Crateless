@@ -163,7 +163,7 @@
     <value>App'en kører allerede</value>
   </data>
   <data name="AppAlreadyRunningText" xml:space="preserve">
-    <value>G-Helper kører allerede. Tjek systembakken for et ikon.</value>
+    <value>Crateless kører allerede. Tjek systembakken for et ikon.</value>
   </data>
   <data name="Apply" xml:space="preserve">
     <value>Anvend</value>
@@ -726,7 +726,7 @@ Vil du stadig fortsætte?</value>
     <value>En zone</value>
   </data>
   <data name="OpenGHelper" xml:space="preserve">
-    <value>Åbn G-Helper vindue</value>
+    <value>Åbn Crateless vindue</value>
   </data>
   <data name="OptimalDisplayBrightness" xml:space="preserve">
     <value>Optimal skærmlysstyrke</value>
@@ -783,7 +783,7 @@ Vil du stadig fortsætte?</value>
     <value>Nulstil</value>
   </data>
   <data name="RestartGPU" xml:space="preserve">
-    <value>Noget bruger dGPU og forhindrer Øko-tilstand. Lad G-Helper forsøge at genstarte dGPU i enhedshåndtering? (fortsæt på egen risiko)</value>
+    <value>Noget bruger dGPU og forhindrer Øko-tilstand. Lad Crateless forsøge at genstarte dGPU i enhedshåndtering? (fortsæt på egen risiko)</value>
   </data>
   <data name="RestartingNVServices" xml:space="preserve">
     <value>Restarting NV Services...</value>
