@@ -461,7 +461,6 @@ namespace GHelper.UI.Nebula
                 if (sleeping) Txt(g, NebulaText.Sleeping, x + 60, 257, F(23), theme.Faint);
             }
 
-            if (usage is >= 0) Txt(g, usage + "%", x + 232, 240, F(11, FontStyle.Bold), theme.Muted, StringAlignment.Far);
 
             // sparkline 300..370
             var chart = R(x, 292, colW, 76);
