@@ -70,7 +70,7 @@ namespace GHelper.UI.Nebula
         public NebulaForm()
         {
             Text = "Crateless";
-            Icon = Properties.Resources.standard;
+            try { Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { Icon = Properties.Resources.standard; }
             FormBorderStyle = FormBorderStyle.Sizable;
             MinimumSize = new Size(900, 640);
             ShowInTaskbar = true;
@@ -85,7 +85,7 @@ namespace GHelper.UI.Nebula
             refreshTimer.Tick += (_, _) => Refresh(false);
             FormClosing += NebulaForm_FormClosing;
             VisibleChanged += NebulaForm_VisibleChanged;
-            MouseLeave += (_, _) => SetHover("");
+            MouseLeave += (_, _) => { SetHover(""); shownTip = ""; tip.Hide(this); };
         }
 
         private void PlaceOnScreen()
@@ -509,9 +509,6 @@ namespace GHelper.UI.Nebula
             IconAt(g, "fan", 762, y - 17, 24);
             Txt(g, label, 794, y, F(11, FontStyle.Bold), theme.Faint);
 
-            using (var track = new SolidBrush(theme.Line))
-                g.FillRectangle(track, R(902, y - 9, 306, 4));
-
             if (string.IsNullOrEmpty(reading))
             {
                 Txt(g, "—", 1394, y + 1, F(18, FontStyle.Bold, true), theme.Faint, StringAlignment.Far);
@@ -528,6 +525,8 @@ namespace GHelper.UI.Nebula
             }
             if (pct >= 0)
             {
+                using (var track = new SolidBrush(theme.Line))
+                    g.FillRectangle(track, R(902, y - 9, 306, 4));
                 using var lg = new LinearGradientBrush(R(902, y - 9, 306, 4), theme.Accent, theme.Blue, LinearGradientMode.Horizontal);
                 g.FillRectangle(lg, R(902, y - 9, 306f * pct / 100f, 4));
             }
@@ -654,7 +653,7 @@ namespace GHelper.UI.Nebula
             try
             {
                 var modes = Aura.GetModes();
-                var m = (AuraMode)AppConfig.Get("aura_mode");
+                var m = (AuraMode)AppConfig.Get("aura_mode", (int)AuraMode.AuraStatic);
                 if (modes.TryGetValue(m, out var name)) aura = name;
             }
             catch { }
@@ -691,7 +690,7 @@ namespace GHelper.UI.Nebula
             if (t != shownTip)
             {
                 shownTip = t;
-                if (t.Length > 0) tip.SetToolTip(this, t); else tip.Hide(this);
+                if (t.Length > 0) tip.Show(t, this, e.X + 16, e.Y + 20, 2500); else tip.Hide(this);
             }
         }
 
