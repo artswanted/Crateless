@@ -100,7 +100,9 @@ namespace GHelper.UI.Nebula.Pages
             string health;
             if (HardwareControl.batteryHealth >= 0)
             {
-                health = NebulaText.T("Wear", "Износ") + ": " + Math.Round(HardwareControl.batteryHealth, 1) + "%";
+                // batteryHealth is full/design capacity in percent (100 = new battery)
+                decimal h = HardwareControl.batteryHealth;
+                health = NebulaText.T("Health", "Здоровье") + ": " + Math.Round(h, 1) + "%  ·  " + NebulaText.T("wear", "износ") + " " + Math.Round(100 - h, 1) + "%";
                 if (HardwareControl.fullCapacity is > 0 && HardwareControl.designCapacity is > 0)
                     health += $"  ·  {Math.Round(HardwareControl.fullCapacity.Value / 1000m, 1)} / {Math.Round(HardwareControl.designCapacity.Value / 1000m, 1)} " + NebulaText.T("Wh", "Вт·ч");
             }

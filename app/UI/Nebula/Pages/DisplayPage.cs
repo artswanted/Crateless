@@ -92,7 +92,7 @@ namespace GHelper.UI.Nebula.Pages
                 {
                     string g = "—";
                     var cur = (SplendidGamut)AppConfig.Get("gamut", (int)VisualControl.GetDefaultGamut());
-                    if (gamuts.TryGetValue(cur, out var n)) g = n;
+                    if (gamuts.TryGetValue(cur, out var n)) g = n.Replace("Gamut:", "").Trim();
                     c.ValueRow(256, row, 359, NebulaText.T("Color gamut", "Цветовой охват"), g, "display:gamut");
                     row += 60;
                 }
