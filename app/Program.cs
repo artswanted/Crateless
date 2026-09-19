@@ -413,8 +413,20 @@ namespace GHelper
             SchedulePowerCheck();
         }
 
+        static UI.Nebula.NebulaForm? nebulaForm;
+
         public static void SettingsToggle(bool checkForFocus = true, bool trayClick = false)
         {
+            if (UI.NebulaTheme.IsEnabled)
+            {
+                // Nebula shell (config "theme": "nebula"): the classic window stays available
+                // through ShowLegacySettings() until every section is redesigned.
+                if (settingsForm.Visible) settingsForm.HideAll();
+                nebulaForm ??= new UI.Nebula.NebulaForm();
+                nebulaForm.Toggle();
+                return;
+            }
+
             if (settingsForm.Visible)
             {
                 // If helper window is not on top, this just focuses on the app again
@@ -429,6 +441,14 @@ namespace GHelper
                 }
             }
             else
+            {
+                ShowLegacySettings();
+            }
+        }
+
+        /// <summary>Shows the classic main window bottom-right, regardless of the active shell.</summary>
+        public static void ShowLegacySettings()
+        {
             {
                 var screen = Screen.PrimaryScreen;
                 if (screen is null) screen = Screen.FromControl(settingsForm);

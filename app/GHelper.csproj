@@ -75,6 +75,9 @@
     <EmbeddedResource Include="Pawn\RyzenSMU.bin">
       <LogicalName>$(AssemblyName).RyzenSMU.bin</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="Resources\Nebula\*.png;Resources\Nebula\*.jpg">
+      <LogicalName>Nebula.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="Pawn\IntelMSR.bin">
       <LogicalName>$(AssemblyName).IntelMSR.bin</LogicalName>
     </EmbeddedResource>

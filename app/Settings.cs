@@ -53,7 +53,7 @@ namespace GHelper
         static long lastLostFocus;
 
         bool isGpuSection = true;
-        bool isMuxGpu = true;
+        public bool isMuxGpu = true;
 
         bool batteryMouseOver = false;
         bool batteryFullMouseOver = false;
@@ -1161,6 +1161,9 @@ namespace GHelper
                 extraForm.Show();
             }
         }
+
+        /// <summary>Opens/closes the Extra window (used by the Nebula shell as a V1 bridge).</summary>
+        public void ExtraToggle() => ButtonKeyboard_Click(null, EventArgs.Empty);
 
         public void FansInit()
         {
