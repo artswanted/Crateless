@@ -75,8 +75,62 @@ namespace GHelper.UI.Nebula
                 }
             }
             catch (Exception ex) { Logger.WriteLine("Nebula hero: " + ex.Message); }
+
+            // Renders that ASUS software already placed on this machine (never redistributed by us).
+            var local = FindLocalDeviceRender();
+            if (local is not null)
+            {
+                try
+                {
+                    using var fs = File.OpenRead(local);
+                    using var ms = new MemoryStream();
+                    fs.CopyTo(ms); ms.Position = 0;
+                    Logger.WriteLine("Nebula hero (local ASUS render): " + local);
+                    return new Bitmap(ms);
+                }
+                catch (Exception ex) { Logger.WriteLine("Nebula hero: " + ex.Message); }
+            }
+
             return Load("Nebula.hero-laptop.jpg");
         });
+
+        /// <summary>
+        /// Looks for a product render of this laptop left behind by Armoury Crate / MyASUS in the
+        /// user's profile. Laptop SKUs start with 90NR; peripherals use other prefixes.
+        /// </summary>
+        public static string? FindLocalDeviceRender()
+        {
+            try
+            {
+                string packages = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Packages");
+                if (!Directory.Exists(packages)) return null;
+                string model = AppConfig.GetModelShort();
+
+                // 1) MyASUS / PC Assistant: <lang>_<MODEL>_img.png
+                foreach (var dir in Directory.GetDirectories(packages, "B9ECED6F.ASUSPCAssistant_*"))
+                {
+                    string state = Path.Combine(dir, "LocalState");
+                    if (!Directory.Exists(state)) continue;
+                    var hit = Directory.GetFiles(state, "*_img.png")
+                        .FirstOrDefault(f => model.Length > 0 && Path.GetFileName(f).Contains(model, StringComparison.OrdinalIgnoreCase));
+                    if (hit is not null) return hit;
+                }
+
+                // 2) Armoury Crate product renders: ProductPNG\90NR*.png (skip *_crop)
+                foreach (var dir in Directory.GetDirectories(packages, "B9ECED6F.ArmouryCrate_*"))
+                {
+                    string png = Path.Combine(dir, "LocalState", "ProductPNG");
+                    if (!Directory.Exists(png)) continue;
+                    var hit = Directory.GetFiles(png, "90NR*.png")
+                        .Where(f => !Path.GetFileNameWithoutExtension(f).EndsWith("_crop", StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(f => new FileInfo(f).Length)
+                        .FirstOrDefault();
+                    if (hit is not null) return hit;
+                }
+            }
+            catch (Exception ex) { Logger.WriteLine("Nebula local render: " + ex.Message); }
+            return null;
+        }
 
         /// <summary>Hero render fitted into the given width, cached by width.</summary>
         public static Image? HeroScaled(int width)
