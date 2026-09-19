@@ -165,6 +165,7 @@ namespace GHelper.UI.Nebula
                 {
                     HardwareControl.ReadSensors();
                     HardwareControl.cpuUsage = HardwareControl.GetCPUUsage();
+                    HardwareControl.InitCPUPowerAsync();
                     HardwareControl.cpuPower = HardwareControl.GetCPUPower();
                     var ram = HardwareControl.GetRAMInfo();
                     HardwareControl.ramUsage = ram?.percent;
@@ -398,12 +399,29 @@ namespace GHelper.UI.Nebula
             {
                 float ratio = Math.Min(box.Width / hero.Width, box.Height / hero.Height);
                 float w = hero.Width * ratio, h = hero.Height * ratio;
-                g.DrawImage(hero, box.X + (box.Width - w) / 2, box.Y + (box.Height - h) / 2, w, h);
+                var dst = new RectangleF(box.X + (box.Width - w) / 2, box.Y + (box.Height - h) / 2, w, h);
+                g.DrawImage(hero, dst);
+                FadeEdges(g, dst, S(48));
             }
 
             bool connected = Program.acpi?.IsConnected() ?? false;
             Txt(g, "●  " + (connected ? NebulaText.Connected : NebulaText.NotConnected), 139, 666,
                 F(11, FontStyle.Bold), connected ? theme.Accent : theme.Warning);
+        }
+
+        /// <summary>Blends the raster's black background into the page background at the edges.</summary>
+        private void FadeEdges(Graphics g, RectangleF r, float band)
+        {
+            Color bg = theme.Bg, clear = Color.FromArgb(0, theme.Bg);
+            band = Math.Min(band, Math.Min(r.Width, r.Height) / 3);
+            var top = new RectangleF(r.X, r.Y, r.Width, band);
+            var bottom = new RectangleF(r.X, r.Bottom - band, r.Width, band);
+            var left = new RectangleF(r.X, r.Y, band, r.Height);
+            var right = new RectangleF(r.Right - band, r.Y, band, r.Height);
+            using (var b = new LinearGradientBrush(top, bg, clear, LinearGradientMode.Vertical)) g.FillRectangle(b, top);
+            using (var b = new LinearGradientBrush(bottom, clear, bg, LinearGradientMode.Vertical)) g.FillRectangle(b, bottom);
+            using (var b = new LinearGradientBrush(left, bg, clear, LinearGradientMode.Horizontal)) g.FillRectangle(b, left);
+            using (var b = new LinearGradientBrush(right, clear, bg, LinearGradientMode.Horizontal)) g.FillRectangle(b, right);
         }
 
         private void PaintCpuGpu(Graphics g)
@@ -437,7 +455,7 @@ namespace GHelper.UI.Nebula
                 if (sleeping) Txt(g, NebulaText.Sleeping, x + 60, 257, F(23), theme.Faint);
             }
 
-            if (usage is >= 0) Txt(g, usage + "%", x + colW, 240, F(11, FontStyle.Bold), theme.Muted, StringAlignment.Far);
+            if (usage is >= 0) Txt(g, usage + "%", x + 232, 240, F(11, FontStyle.Bold), theme.Muted, StringAlignment.Far);
 
             // sparkline 300..370
             var chart = R(x, 292, colW, 76);
