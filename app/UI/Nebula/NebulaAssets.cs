@@ -86,6 +86,13 @@ namespace GHelper.UI.Nebula
                     using var ms = new MemoryStream();
                     fs.CopyTo(ms); ms.Position = 0;
                     Logger.WriteLine("Nebula hero (local ASUS render): " + local);
+                    // keep a private copy so the render survives an Armoury Crate uninstall
+                    try
+                    {
+                        string keep = Path.Combine(Logger.appPath, "hero" + Path.GetExtension(local).ToLowerInvariant());
+                        if (!File.Exists(keep)) File.Copy(local, keep);
+                    }
+                    catch (Exception ex) { Logger.WriteLine("Nebula hero copy: " + ex.Message); }
                     return new Bitmap(ms);
                 }
                 catch (Exception ex) { Logger.WriteLine("Nebula hero: " + ex.Message); }

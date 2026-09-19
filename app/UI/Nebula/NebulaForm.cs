@@ -17,7 +17,12 @@ namespace GHelper.UI.Nebula
     {
         private const float DesignW = 1440f;
         private const float DesignH = 1060f;
-        private const float RailW = 86f;
+        private const float RailCollapsed = 86f;
+        private const float RailExpanded = 236f;
+        private bool railExpanded = AppConfig.Is("nebula_rail");
+        private float RailW => railExpanded ? RailExpanded : RailCollapsed;
+        /// <summary>Horizontal shift of the page grid (client px) when the rail is expanded.</summary>
+        private float PageShift => S(RailW - RailCollapsed);
         private const float TopBarH = 43f;
 
         private float k = 1f;
@@ -255,6 +260,8 @@ namespace GHelper.UI.Nebula
 
         // ---- painting ------------------------------------------------------------------------------
         private float S(float v) => v * k;
+        /// <summary>Scale applied to the page grid so that x = 1394 lands at the same client edge whatever the rail width.</summary>
+        private float PageScale => railExpanded ? (DesignW - (RailExpanded - RailCollapsed)) / DesignW : 1f;
         private RectangleF R(float x, float y, float w, float h) => new(S(x), S(y), S(w), S(h));
 
         protected override void OnPaint(PaintEventArgs e)
@@ -273,7 +280,13 @@ namespace GHelper.UI.Nebula
 
             if (page is not null)
             {
-                PaintHeader(canvas, page.Title, page.Subtitle);
+                {
+                    var hs = g.Save();
+                    g.TranslateTransform(PageShift, 0);
+                    g.ScaleTransform(PageScale, PageScale);
+                    PaintHeader(canvas, page.Title, page.Subtitle);
+                    g.Restore(hs);
+                }
 
                 float maxScroll = Math.Max(0, page.ContentHeight - ViewBottom);
                 scroll = Math.Clamp(scroll, 0, maxScroll);
@@ -281,7 +294,10 @@ namespace GHelper.UI.Nebula
 
                 var saved = g.Save();
                 g.SetClip(new RectangleF(S(RailW) + 1, S(130), ClientSize.Width, S(ViewBottom + 12) - S(130)));
-                g.TranslateTransform(0, -off);
+                // page grid: shift right of the rail and shrink so 1394 still fits the window
+                float ps = PageScale;
+                g.TranslateTransform(PageShift, -off);
+                g.ScaleTransform(ps, ps);
                 int before = canvas.Hits.Count;
                 try { page.Paint(canvas); }
                 catch (Exception ex) { Logger.WriteLine($"Nebula paint {page.Id}: {ex.Message}"); }
@@ -290,7 +306,7 @@ namespace GHelper.UI.Nebula
                 for (int i = before; i < canvas.Hits.Count; i++)
                 {
                     var h = canvas.Hits[i];
-                    var r = h.rect; r.Offset(0, -off);
+                    var r = new RectangleF(h.rect.X * ps + PageShift, h.rect.Y * ps - off, h.rect.Width * ps, h.rect.Height * ps);
                     if (r.Bottom < S(130) || r.Top > S(ViewBottom + 12)) r = RectangleF.Empty;
                     canvas.Hits[i] = (r, h.id, h.tip);
                 }
@@ -322,11 +338,21 @@ namespace GHelper.UI.Nebula
             c.Txt("C R A T E L E S S", 28, 28, c.F(12, FontStyle.Bold), theme.Accent);
             c.Txt("CONTROL CENTER", 226, 28, c.F(9), theme.Faint);
 
+            // rail toggle (hamburger) at the top of the rail
+            {
+                var tr = R(16, 62, 54, 40);
+                if (hover == "rail:toggle") c.Card(tr, 10, theme.Raised);
+                using var pen = new Pen(theme.Muted, Math.Max(1.5f, 1.8f * k)) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                for (int i = 0; i < 3; i++)
+                    c.G.DrawLine(pen, S(33), S(75 + i * 7), S(53), S(75 + i * 7));
+                c.Hit(tr, "rail:toggle", railExpanded ? NebulaText.T("Collapse menu", "Свернуть меню") : NebulaText.T("Expand menu", "Развернуть меню"));
+            }
+
             float y = 163;
             foreach (var item in Rail)
             {
                 bool active = item.id == pageId;
-                var slot = R(16, y, 54, 48);
+                var slot = R(16, y, RailW - 32, 48);
                 if (active)
                 {
                     c.Card(slot, 12, theme.AccentBg);
@@ -338,16 +364,24 @@ namespace GHelper.UI.Nebula
                     c.Card(slot, 12, theme.Raised);
                 }
                 c.IconAt(item.icon, 31, y + 12, 24, active);
-                c.Hit(slot, "rail:" + item.id, active ? "" : item.title() + (item.legacy ? " · " + NebulaText.LegacyWindow : ""));
+                if (railExpanded)
+                    c.Txt(item.title(), 70, y + 30, c.F(13, active ? FontStyle.Bold : FontStyle.Regular), active ? theme.Accent : theme.Text);
+                c.Hit(slot, "rail:" + item.id, active || railExpanded ? "" : item.title());
                 y += 60;
             }
 
             string sensors = NebulaSensors.LastRead == DateTime.MinValue
                 ? NebulaText.SensorsWaiting
                 : NebulaText.SensorsUpdated + " " + NebulaSensors.LastRead.ToString("HH:mm:ss");
-            c.Txt("●  " + sensors, 124, 1040, c.F(11), theme.Faint);
-            var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-            c.Txt($"CRATELESS {ver?.Major}.{ver?.Minor}.{ver?.Build}  /  NEBULA", 1394, 1040, c.F(10), theme.Faint, StringAlignment.Far);
+            {
+                var fs = c.G.Save();
+                c.G.TranslateTransform(PageShift, 0);
+                c.G.ScaleTransform(PageScale, PageScale);
+                c.Txt("●  " + sensors, 124, 1040, c.F(11), theme.Faint);
+                var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                c.Txt($"CRATELESS {ver?.Major}.{ver?.Minor}.{ver?.Build}  /  NEBULA", 1394, 1040, c.F(10), theme.Faint, StringAlignment.Far);
+                c.G.Restore(fs);
+            }
         }
 
         private void PaintHeader(NebulaCanvas c, string title, string subtitle)
@@ -447,8 +481,10 @@ namespace GHelper.UI.Nebula
                 if (dragId.StartsWith("slider:fan:pt:") && page is FanPage fan)
                 {
                     var plot = FanPage.PlotRect;
-                    float tx = Math.Clamp((p.X / k - plot.X) / plot.Width, 0f, 1f);
-                    float ty = Math.Clamp(((p.Y + S(scroll)) / k - plot.Y) / plot.Height, 0f, 1f);
+                    float ps = PageScale;
+                    float dx = (p.X - PageShift) / ps, dy = (p.Y + S(scroll)) / ps;
+                    float tx = Math.Clamp((dx / k - plot.X) / plot.Width, 0f, 1f);
+                    float ty = Math.Clamp((dy / k - plot.Y) / plot.Height, 0f, 1f);
                     fan.DragPoint(int.Parse(dragId[14..]), tx, ty, (ModifierKeys & Keys.Shift) == Keys.Shift);
                     if (done) fan.Drag(dragId, 0, true);
                 }
@@ -471,6 +507,14 @@ namespace GHelper.UI.Nebula
 
             try
             {
+                if (id == "rail:toggle")
+                {
+                    railExpanded = !railExpanded;
+                    AppConfig.Set("nebula_rail", railExpanded ? 1 : 0);
+                    LayoutHost();
+                    Invalidate();
+                    return;
+                }
                 if (id.StartsWith("rail:")) { SetPage(id[5..]); return; }
                 if (page is not null && page.Click(id, e.Location, this)) Invalidate();
             }
