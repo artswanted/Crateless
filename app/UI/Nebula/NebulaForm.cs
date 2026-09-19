@@ -34,6 +34,10 @@ namespace GHelper.UI.Nebula
         private bool reading;
         private DateTime lastRead = DateTime.MinValue;
 
+        private int? igpuUse, igpuTemp, igpuPower;
+        private float? dgpuPower;
+        private static readonly bool hasIgpu = AppConfig.IsAMDiGPU();
+
         private readonly Queue<float> cpuHistory = new();
         private readonly Queue<float> gpuHistory = new();
 
@@ -278,6 +282,25 @@ namespace GHelper.UI.Nebula
                     HardwareControl.cpuUsage = HardwareControl.GetCPUUsage();
                     HardwareControl.InitCPUPowerAsync();
                     HardwareControl.cpuPower = HardwareControl.GetCPUPower();
+                    try
+                    {
+                        var gc = HardwareControl.GpuControl;
+                        // NvidiaGpuControl.GetGpuUse returns null while the dGPU sleeps; it never wakes it.
+                        HardwareControl.gpuUsage = (HardwareControl.gpuTemp is > 0) ? gc?.GetGpuUse() : null;
+                        dgpuPower = (HardwareControl.gpuTemp is > 0) ? gc?.GetGpuPower() : null;
+                    }
+                    catch { HardwareControl.gpuUsage = null; dgpuPower = null; }
+
+                    if (hasIgpu)
+                    {
+                        try
+                        {
+                            var i = HardwareControl.AmdApu().GetiGpuSensors();
+                            igpuUse = i.use; igpuTemp = i.temp; igpuPower = i.gfxPower;
+                        }
+                        catch { igpuUse = igpuTemp = igpuPower = null; }
+                    }
+
                     var ram = HardwareControl.GetRAMInfo();
                     HardwareControl.ramUsage = ram?.percent;
                     HardwareControl.ramUsedMb = ram?.usedMb;
@@ -543,16 +566,27 @@ namespace GHelper.UI.Nebula
 
         private void PaintCpuGpu(Graphics g)
         {
-            PaintMetric(g, 762, NebulaText.Cpu, "cpu", HardwareControl.cpuTemp, HardwareControl.cpuUsage,
-                        HardwareControl.cpuPower, cpuHistory, theme.Accent, sleeping: false);
+            var cpuRows = new List<(string label, string value)>();
+            if (HardwareControl.cpuUsage is >= 0) cpuRows.Add((NebulaText.Load, HardwareControl.cpuUsage + " %"));
+            if (HardwareControl.cpuPower is > 0) cpuRows.Add((NebulaText.Power, Math.Round(HardwareControl.cpuPower.Value) + " " + NebulaText.Watt));
+            PaintMetric(g, 762, NebulaText.Cpu, "cpu", HardwareControl.cpuTemp, cpuRows, cpuHistory, theme.Accent, sleeping: false);
 
             bool gpuSleeping = HardwareControl.gpuTemp is null || HardwareControl.gpuTemp <= 0;
-            PaintMetric(g, 1088, NebulaText.Gpu, "gpu", HardwareControl.gpuTemp, HardwareControl.gpuUsage,
-                        HardwareControl.gpuPower, gpuHistory, theme.Blue, sleeping: gpuSleeping);
+            var rows = new List<(string label, string value)>();
+            if (HardwareControl.gpuUsage is >= 0) rows.Add((NebulaText.Load + (hasIgpu ? " dGPU" : ""), HardwareControl.gpuUsage + " %"));
+            if (dgpuPower is > 0) rows.Add((NebulaText.Power + (hasIgpu ? " dGPU" : ""), Math.Round(dgpuPower.Value) + " " + NebulaText.Watt));
+            if (hasIgpu && igpuUse is >= 0)
+            {
+                string v = igpuUse + " %";
+                if (igpuTemp is > 0) v += "  ·  " + igpuTemp + " °C";
+                if (igpuPower is > 0) v += "  ·  " + igpuPower + " " + NebulaText.Watt;
+                rows.Add((NebulaText.Load + " iGPU", v));
+            }
+            PaintMetric(g, 1088, NebulaText.Gpu, "gpu", HardwareControl.gpuTemp, rows, gpuHistory, theme.Blue, sleeping: gpuSleeping);
         }
 
-        private void PaintMetric(Graphics g, float x, string caption, string icon, float? temp, int? usage,
-                                 float? power, Queue<float> history, Color color, bool sleeping)
+        private void PaintMetric(Graphics g, float x, string caption, string icon, float? temp,
+                                 List<(string label, string value)> rows, Queue<float> history, Color color, bool sleeping)
         {
             const float colW = 306; // 762..1068 / 1088..1394
             IconAt(g, icon, x, 168, 24);
@@ -578,16 +612,12 @@ namespace GHelper.UI.Nebula
             PaintSparkline(g, chart, history, color);
 
             float row = 389;
-            if (usage is >= 0)
+            float step = rows.Count > 2 ? 30 : 33;
+            foreach (var (label, value) in rows)
             {
-                Txt(g, NebulaText.Load, x, row, F(12), theme.Muted);
-                Txt(g, usage + " %", x + colW, row, F(13, FontStyle.Bold), theme.Text, StringAlignment.Far);
-                row += 33;
-            }
-            if (power is > 0)
-            {
-                Txt(g, NebulaText.Power, x, row, F(12), theme.Muted);
-                Txt(g, Math.Round(power.Value) + " " + NebulaText.Watt, x + colW, row, F(13, FontStyle.Bold), theme.Text, StringAlignment.Far);
+                Txt(g, label, x, row, F(12), theme.Muted);
+                Txt(g, value, x + colW, row, F(13, FontStyle.Bold), theme.Text, StringAlignment.Far);
+                row += step;
             }
         }
 
