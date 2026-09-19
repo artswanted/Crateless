@@ -1,40 +1,48 @@
-using GHelper.Display;
 using GHelper.Mode;
+using GHelper.Peripherals;
 using GHelper.USB;
 using System.Drawing.Drawing2D;
 
 namespace GHelper.UI.Nebula.Pages
 {
-    /// <summary>Overview page (design kit screen "overview").</summary>
+    /// <summary>
+    /// Overview: device hero and connected devices on the left, four telemetry blocks
+    /// (processor, graphics, fans, memory) on the right, performance modes and quick access below.
+    /// Composition follows the Armoury Crate home layout in the Nebula style.
+    /// </summary>
     public sealed class OverviewPage : NebulaPage
     {
         public override string Id => "overview";
         public override string Title => NebulaText.ControlCenter;
         public override string Subtitle => NebulaText.Tagline;
 
+        // right column grid
+        private const float ColL = 762, ColR = 1088, ColW = 306;
+        private const float Row1 = 168, Row2 = 470;
+
+        private List<IPeripheral> devices = new();
+
+        public override void Refresh(bool opened)
+        {
+            try { devices = PeripheralsProvider.AllPeripherals(); } catch { devices = new(); }
+        }
+
         public override void Paint(NebulaCanvas c)
         {
             PaintHero(c);
-            PaintCpuGpu(c);
+            PaintCpu(c);
+            PaintGpu(c);
             PaintFans(c);
             PaintMemory(c);
             PaintModes(c);
             PaintQuick(c);
         }
 
-        // ---- hero ------------------------------------------------------------------------------
+        // ---- hero + devices ----------------------------------------------------------------------
         private void PaintHero(NebulaCanvas c)
         {
             var th = c.Theme;
-            c.Txt(NebulaText.YourDevice, 126, 181, c.F(10, FontStyle.Bold), th.Faint);
-            c.Txt(AppConfig.GetModelShort(), 124, 228, c.F(36, FontStyle.Bold, true), th.Text);
-
-            string cpu = PawnIO.CpuInfo.Name;
-            string gpu = HardwareControl.GpuControl?.FullName ?? "";
-            string line = cpu.Length > 0 && gpu.Length > 0 ? cpu + "  /  " + gpu : cpu + gpu;
-            c.Txt(line, 126, 258, c.F(13), th.Muted);
-
-            var box = c.R(124, 282, 596, 356);
+            var box = c.R(124, 150, 596, 330);
             var hero = NebulaAssets.HeroScaled((int)box.Width);
             if (hero is not null)
             {
@@ -49,95 +57,144 @@ namespace GHelper.UI.Nebula.Pages
                 c.G.Clip = saved;
             }
 
+            c.Txt(AppConfig.GetModelShort(), 422, 528, c.F(30, FontStyle.Bold, true), th.Text, StringAlignment.Center);
+            string cpu = PawnIO.CpuInfo.Name;
+            string gpu = HardwareControl.GpuControl?.FullName ?? "";
+            c.Txt(cpu, 422, 556, c.F(12), th.Muted, StringAlignment.Center);
+            if (gpu.Length > 0)
+            {
+                string vram = "";
+                try { var v = HardwareControl.GpuControl?.GetVramInfo(); if (v is { totalMb: > 0 }) vram = $" · {Math.Round(v.Value.totalMb / 1024.0)} GB"; } catch { }
+                c.Txt(gpu + vram, 422, 578, c.F(12), th.Muted, StringAlignment.Center);
+            }
+
             bool connected = Program.acpi?.IsConnected() ?? false;
-            c.Txt("●  " + (connected ? NebulaText.Connected : NebulaText.NotConnected), 139, 666,
-                  c.F(11, FontStyle.Bold), connected ? th.Accent : th.Warning);
-        }
+            c.Txt("●  " + (connected ? NebulaText.Connected : NebulaText.NotConnected), 422, 606,
+                  c.F(10, FontStyle.Bold), connected ? th.Accent : th.Warning, StringAlignment.Center);
 
-        // ---- cpu / gpu -------------------------------------------------------------------------
-        private void PaintCpuGpu(NebulaCanvas c)
-        {
-            var cpuRows = new List<(string, string)>();
-            if (HardwareControl.cpuUsage is >= 0) cpuRows.Add((NebulaText.Load, HardwareControl.cpuUsage + " %"));
-            if (HardwareControl.cpuPower is > 0) cpuRows.Add((NebulaText.Power, Math.Round(HardwareControl.cpuPower.Value) + " " + NebulaText.Watt));
-            PaintMetric(c, 762, NebulaText.Cpu, "cpu", HardwareControl.cpuTemp, cpuRows, NebulaSensors.CpuHistory, c.Theme.Accent, false);
+            // devices strip
+            string devTitle = NebulaText.T("Devices", "Устройства") + $" ({devices.Count})";
+            c.Txt(devTitle, 124, 652, c.F(11, FontStyle.Bold), th.Faint);
+            var link = c.F(11, FontStyle.Bold);
+            string more = NebulaText.T("Open  ↗", "Открыть  ↗");
+            c.Txt(more, 720, 652, link, c.IsHover("overview:devices") ? th.Text : th.Accent, StringAlignment.Far);
+            c.Hit(c.R(720 - c.TextWidth(more, link) - 8, 634, c.TextWidth(more, link) + 16, 26), "overview:devices");
 
-            bool sleeping = HardwareControl.gpuTemp is null || HardwareControl.gpuTemp <= 0;
-            bool igpu = NebulaSensors.HasIgpu;
-            var rows = new List<(string, string)>();
-            if (HardwareControl.gpuUsage is >= 0) rows.Add((NebulaText.Load + (igpu ? " dGPU" : ""), HardwareControl.gpuUsage + " %"));
-            if (NebulaSensors.DgpuPower is > 0) rows.Add((NebulaText.Power + (igpu ? " dGPU" : ""), Math.Round(NebulaSensors.DgpuPower.Value) + " " + NebulaText.Watt));
-            if (igpu && NebulaSensors.IgpuUse is >= 0)
+            float x = 124;
+            if (devices.Count == 0)
             {
-                string v = NebulaSensors.IgpuUse + " %";
-                if (NebulaSensors.IgpuTemp is > 0) v += "  ·  " + NebulaSensors.IgpuTemp + " °C";
-                if (NebulaSensors.IgpuPower is > 0) v += "  ·  " + NebulaSensors.IgpuPower + " " + NebulaText.Watt;
-                rows.Add((NebulaText.Load + " iGPU", v));
+                c.Card(c.R(124, 664, 596, 46), 10, th.Card, th.Line);
+                c.Txt(NebulaText.T("No ASUS peripherals connected.", "Периферия ASUS не подключена."), 144, 693, c.F(11), th.Muted);
             }
-            PaintMetric(c, 1088, NebulaText.Gpu, "gpu", HardwareControl.gpuTemp, rows, NebulaSensors.GpuHistory, c.Theme.Blue, sleeping);
+            for (int i = 0; i < devices.Count && i < 3; i++)
+            {
+                var d = devices[i];
+                var r = c.R(x, 664, 192, 46);
+                c.Card(r, 10, c.IsHover("overview:dev:" + i) ? th.Raised : th.Card, th.Line);
+                c.IconAt(d.DeviceType() switch { PeripheralType.Keyboard => "keyboard", PeripheralType.Headset => "heart", _ => "mouse" }, x + 12, 675, 24, true);
+                string name = d.GetDisplayName();
+                if (name.Length > 18) name = name[..17] + "…";
+                c.Txt(name, x + 46, 684, c.F(11, FontStyle.Bold), th.Text);
+                string st = d.IsDeviceReady ? (d.HasBattery() ? d.Battery + "%" + (d.Charging ? " ⚡" : "") : NebulaText.T("connected", "подключено")) : NebulaText.T("not ready", "не готово");
+                c.Txt(st, x + 46, 700, c.F(9), th.Muted);
+                c.Hit(r, "overview:dev:" + i);
+                x += 202;
+            }
         }
 
-        private static void PaintMetric(NebulaCanvas c, float x, string caption, string icon, float? temp,
-                                        List<(string label, string value)> rows, Queue<float> history, Color color, bool sleeping)
+        // ---- blocks --------------------------------------------------------------------------------
+        private static void BlockTitle(NebulaCanvas c, float x, float y, string icon, string title)
         {
-            const float colW = 306;
+            c.IconAt(icon, x, y - 18, 24);
+            c.Txt(title, x + 32, y, c.F(19, FontStyle.Bold, true), c.Theme.Text);
+        }
+
+        /// <summary>Label / value row with an optional bar underneath (bar = 0..1, null = no bar).</summary>
+        private static float Row(NebulaCanvas c, float x, float y, string label, string value, float? bar, Color color)
+        {
             var th = c.Theme;
-            c.IconAt(icon, x, 168, 24);
-            c.Txt(caption, x + 32, 184, c.F(11, FontStyle.Bold), th.Faint);
-
-            if (temp is > 0)
+            c.Txt(label, x, y, c.F(12), th.Muted);
+            c.Txt(value, x + ColW, y, c.F(12, FontStyle.Bold), th.Text, StringAlignment.Far);
+            if (bar is not null)
             {
-                string t = Math.Round(temp.Value).ToString();
-                var big = c.F(62, FontStyle.Bold, true);
-                c.Txt(t, x, 258, big, th.Text);
-                c.Txt("°C", x + c.TextWidth(t, big) + 6, 257, c.F(23), th.Muted);
+                using (var b = new SolidBrush(th.Line)) c.G.FillRectangle(b, c.R(x, y + 8, ColW, 3));
+                float w = ColW * Math.Clamp(bar.Value, 0, 1);
+                if (w > 0)
+                {
+                    using var lg = new LinearGradientBrush(c.R(x, y + 8, ColW, 3), th.Accent, th.Blue, LinearGradientMode.Horizontal);
+                    c.G.FillRectangle(lg, c.R(x, y + 8, w, 3));
+                }
+                return y + 36;
             }
-            else
-            {
-                c.Txt("—", x, 258, c.F(62, FontStyle.Bold, true), th.Faint);
-                if (sleeping) c.Txt(NebulaText.Sleeping, x + 60, 257, c.F(23), th.Faint);
-            }
-
-            c.Sparkline(c.R(x, 292, colW, 76), history.ToArray(), NebulaSensors.HistoryLength, color);
-
-            float row = 389;
-            float step = rows.Count > 2 ? 30 : 33;
-            foreach (var (label, value) in rows)
-            {
-                c.Txt(label, x, row, c.F(12), th.Muted);
-                c.Txt(value, x + colW, row, c.F(13, FontStyle.Bold), th.Text, StringAlignment.Far);
-                row += step;
-            }
+            using (var pen = new Pen(Color.FromArgb(70, th.Line), 1f)) c.G.DrawLine(pen, c.S(x), c.S(y + 8), c.S(x + ColW), c.S(y + 8));
+            return y + 27;
         }
 
-        // ---- fans ------------------------------------------------------------------------------
+        private static string Dash => "—";
+
+        private void PaintCpu(NebulaCanvas c)
+        {
+            float y = Row1;
+            BlockTitle(c, ColL, y + 22, "cpu", NebulaText.T("Processor", "Процессор"));
+            y += 66;
+
+            var mhz = NebulaSensors.CpuMhz;
+            y = Row(c, ColL, y, NebulaText.T("Frequency", "Частота"), mhz is > 0 ? $"{mhz:N0} MHz" : Dash, mhz is > 0 ? Math.Clamp(mhz.Value / 5500f, 0, 1) : null, c.Theme.Accent);
+            var use = HardwareControl.cpuUsage;
+            y = Row(c, ColL, y, NebulaText.T("Usage", "Использование"), use is >= 0 ? use + " %" : Dash, use is >= 0 ? use.Value / 100f : null, c.Theme.Accent);
+            var t = HardwareControl.cpuTemp;
+            y = Row(c, ColL, y, NebulaText.T("Temperature", "Температура"), t is > 0 ? Math.Round(t.Value) + " °C" : Dash, null, c.Theme.Accent);
+            var p = HardwareControl.cpuPower;
+            y = Row(c, ColL, y, NebulaText.T("Power", "Мощность"), p is > 0 ? Math.Round(p.Value) + " " + NebulaText.Watt : Dash, null, c.Theme.Accent);
+            if (NebulaSensors.HasIgpu && NebulaSensors.IgpuUse is >= 0)
+                y = Row(c, ColL, y, "iGPU · " + NebulaText.T("usage", "загрузка"), NebulaSensors.IgpuUse + " %" + (NebulaSensors.IgpuPower is > 0 ? " · " + NebulaSensors.IgpuPower + " " + NebulaText.Watt : ""), null, c.Theme.Accent);
+
+            c.Sparkline(c.R(ColL, y + 4, ColW, 40), NebulaSensors.CpuHistory.ToArray(), NebulaSensors.HistoryLength, c.Theme.Accent);
+        }
+
+        private void PaintGpu(NebulaCanvas c)
+        {
+            float y = Row1;
+            BlockTitle(c, ColR, y + 22, "gpu", NebulaText.T("Graphics", "Графика"));
+            y += 66;
+
+            bool eco = AppConfig.Get("gpu_mode") == AsusACPI.GPUModeEco && !AppConfig.Is("gpu_auto");
+            bool awake = HardwareControl.gpuTemp is > 0;
+            string state = eco ? NebulaText.T("off (Eco)", "выкл (Eco)") : awake ? NebulaText.T("active", "активна") : NebulaText.Sleeping;
+            y = Row(c, ColR, y, NebulaText.T("dGPU state", "Состояние dGPU"), state, null, c.Theme.Blue);
+            var use = HardwareControl.gpuUsage;
+            y = Row(c, ColR, y, NebulaText.T("Usage", "Использование"), awake && use is >= 0 ? use + " %" : Dash, awake && use is >= 0 ? use.Value / 100f : null, c.Theme.Blue);
+            var t = HardwareControl.gpuTemp;
+            y = Row(c, ColR, y, NebulaText.T("Temperature", "Температура"), t is > 0 ? Math.Round(t.Value) + " °C" : Dash, null, c.Theme.Blue);
+            var p = NebulaSensors.DgpuPower;
+            y = Row(c, ColR, y, NebulaText.T("Power", "Мощность"), p is > 0 ? Math.Round(p.Value) + " " + NebulaText.Watt : Dash, null, c.Theme.Blue);
+            int gpuBase = AppConfig.Get("gpu_base", -1);
+            string mode = AppConfig.Is("gpu_auto") ? NebulaText.Optimized : AppConfig.Get("gpu_mode") switch { AsusACPI.GPUModeEco => NebulaText.Eco, AsusACPI.GPUModeUltimate => NebulaText.Ultimate, _ => NebulaText.Standard };
+            y = Row(c, ColR, y, NebulaText.T("Mode", "Режим"), mode, null, c.Theme.Blue);
+
+            c.Sparkline(c.R(ColR, y + 4, ColW, 40), NebulaSensors.GpuHistory.ToArray(), NebulaSensors.HistoryLength, c.Theme.Blue);
+        }
+
         private void PaintFans(NebulaCanvas c)
         {
-            var th = c.Theme;
-            c.Txt(NebulaText.Cooling, 762, 489, c.F(11, FontStyle.Bold), th.Faint);
-            var link = c.F(12, FontStyle.Bold);
-            c.Txt(NebulaText.Configure, 1394, 489, link, c.IsHover("overview:fans") ? th.Text : th.Accent, StringAlignment.Far);
-            float lw = c.TextWidth(NebulaText.Configure, link);
-            c.Hit(c.R(1394 - lw - 8, 470, lw + 16, 28), "overview:fans");
+            float y = Row2;
+            BlockTitle(c, ColL, y + 22, "fan", NebulaText.T("Fans", "Вентиляторы"));
+            var link = c.F(11, FontStyle.Bold);
+            c.Txt(NebulaText.Configure, ColL + ColW, y + 22, link, c.IsHover("overview:fans") ? c.Theme.Text : c.Theme.Accent, StringAlignment.Far);
+            c.Hit(c.R(ColL + ColW - 110, y, 110, 30), "overview:fans");
+            y += 66;
 
-            FanRow(c, 539, NebulaText.CpuFan, HardwareControl.cpuFan, "fan_max_0");
-            FanRow(c, 596, NebulaText.GpuFan, HardwareControl.gpuFan, "fan_max_1");
-            if (AppConfig.Is("mid_fan"))
-                FanRow(c, 653, NebulaText.SystemFan, HardwareControl.midFan, "fan_max_2");
+            y = FanRow(c, y, NebulaText.T("CPU fan", "Вентилятор CPU"), HardwareControl.cpuFan, "fan_max_0");
+            y = FanRow(c, y, NebulaText.T("GPU fan", "Вентилятор GPU"), HardwareControl.gpuFan, "fan_max_1");
+            if (AppConfig.Is("mid_fan")) y = FanRow(c, y, NebulaText.T("System fan", "Системный вентилятор"), HardwareControl.midFan, "fan_max_2");
+
+            bool custom = AppConfig.IsApplyFans();
+            Row(c, ColL, y, NebulaText.T("Curve", "Кривая"), custom ? NebulaText.T("custom", "своя") : NebulaText.T("factory", "заводская"), null, c.Theme.Accent);
         }
 
-        private static void FanRow(NebulaCanvas c, float y, string label, string? reading, string maxKey)
+        private float FanRow(NebulaCanvas c, float y, string label, string? reading, string maxKey)
         {
-            var th = c.Theme;
-            c.IconAt("fan", 762, y - 17, 24);
-            c.Txt(label, 794, y, c.F(11, FontStyle.Bold), th.Faint);
-
-            if (string.IsNullOrEmpty(reading))
-            {
-                c.Txt("—", 1394, y + 1, c.F(18, FontStyle.Bold, true), th.Faint, StringAlignment.Far);
-                return;
-            }
-
+            if (string.IsNullOrEmpty(reading)) return Row(c, ColL, y, label, Dash, null, c.Theme.Accent);
             int rpm = ParseLeadingInt(reading);
             int pct = ParsePercent(reading);
             if (pct < 0)
@@ -145,17 +202,125 @@ namespace GHelper.UI.Nebula.Pages
                 int max = AppConfig.Get(maxKey, 0) * 100;
                 if (max > 0 && rpm > 0) pct = Math.Clamp(rpm * 100 / max, 0, 100);
             }
-            if (pct >= 0)
-            {
-                using (var track = new SolidBrush(th.Line)) c.G.FillRectangle(track, c.R(902, y - 9, 306, 4));
-                using var lg = new LinearGradientBrush(c.R(902, y - 9, 306, 4), th.Accent, th.Blue, LinearGradientMode.Horizontal);
-                c.G.FillRectangle(lg, c.R(902, y - 9, 306f * pct / 100f, 4));
-            }
-
-            c.Txt(rpm > 0 ? rpm.ToString("N0") : reading, 1340, y + 1, c.F(18, FontStyle.Bold, true), th.Text, StringAlignment.Far);
-            c.Txt(rpm > 0 ? NebulaText.Rpm : "", 1394, y, c.F(11), th.Muted, StringAlignment.Far);
+            return Row(c, ColL, y, label, rpm > 0 ? $"{rpm:N0} " + NebulaText.Rpm : reading, pct >= 0 ? pct / 100f : null, c.Theme.Accent);
         }
 
+        private void PaintMemory(NebulaCanvas c)
+        {
+            float y = Row2;
+            BlockTitle(c, ColR, y + 22, "chart", NebulaText.T("Memory", "Память"));
+            y += 66;
+
+            var used = HardwareControl.ramUsedMb; var pct = HardwareControl.ramUsage;
+            if (used is not null && pct is not null)
+            {
+                double totalGb = used.Value / 1024.0 / Math.Max(1, pct.Value) * 100.0;
+                y = Row(c, ColR, y, NebulaText.T("RAM", "ОЗУ"), $"{used.Value / 1024.0:0.0} / {Math.Round(totalGb)} {NebulaText.Gb}", pct.Value / 100f, c.Theme.Blue);
+            }
+            else y = Row(c, ColR, y, NebulaText.T("RAM", "ОЗУ"), Dash, null, c.Theme.Blue);
+
+            if (NebulaSensors.Disk is { } d && d.totalGb > 0)
+                y = Row(c, ColR, y, NebulaText.T("System drive", "Накопитель"), $"{d.usedGb:N0} / {d.totalGb:N0} {NebulaText.Gb}", d.usedGb / (float)d.totalGb, c.Theme.Blue);
+
+            try
+            {
+                var v = HardwareControl.GpuControl?.GetVramInfo();
+                if (HardwareControl.gpuTemp is > 0 && v is { totalMb: > 0 })
+                    y = Row(c, ColR, y, "VRAM", $"{v.Value.usedMb / 1024.0:0.0} / {Math.Round(v.Value.totalMb / 1024.0)} {NebulaText.Gb}", v.Value.usedMb / (float)v.Value.totalMb, c.Theme.Blue);
+            }
+            catch { }
+
+            var b = HardwareControl.batteryCharge ?? "";
+            if (b.Length > 0)
+            {
+                int ch = ParseLeadingInt(b);
+                string rate = HardwareControl.batteryRate is { } r && r != 0 ? (r > 0 ? " · +" : " · −") + Math.Abs(Math.Round(r, 1)) + " " + NebulaText.Watt : "";
+                y = Row(c, ColR, y, NebulaText.T("Battery", "Батарея"), b + rate, ch >= 0 ? ch / 100f : null, c.Theme.Blue);
+            }
+        }
+
+        // ---- modes & quick access ------------------------------------------------------------------
+        private static void PaintModes(NebulaCanvas c)
+        {
+            var th = c.Theme;
+            c.Txt(NebulaText.Mode, 124, 760, c.F(11, FontStyle.Bold), th.Faint);
+
+            var list = Modes.GetList();
+            int current = Modes.GetCurrent();
+            int n = Math.Min(list.Count, 6);
+            float w = Math.Min(185, (1270 - 13 * (n - 1)) / n);
+            float x = 124;
+            for (int i = 0; i < n; i++)
+            {
+                int mode = list[i];
+                bool active = mode == current;
+                var r = c.R(x, 776, w, 72);
+                c.Card(r, 12, active ? th.AccentBg : c.IsHover("mode:" + mode) ? th.Raised : th.Card, active ? th.Accent : th.Line);
+                if (active) using (var b = new SolidBrush(th.Accent)) c.G.FillRectangle(b, c.R(x + 12, 846, w - 24, 2));
+                c.IconAt(IconFor(mode), x + 15, 790, 24, active);
+                c.Txt(Modes.GetName(mode), x + 49, 806, c.F(15, FontStyle.Bold), active ? th.Accent : th.Text);
+                c.Txt(HintFor(mode), x + 15, 834, c.F(10), th.Muted);
+                c.Hit(r, "mode:" + mode);
+                x += w + 13;
+            }
+            if (list.Count > 6)
+            {
+                var r = c.R(x, 776, 1394 - x, 72);
+                c.Card(r, 12, th.Card, th.Line);
+                c.Txt(NebulaText.More, x + (1394 - x) / 2, 816, c.F(13, FontStyle.Bold), th.Text, StringAlignment.Center);
+                c.Hit(r, "mode:more");
+            }
+        }
+
+        private static string HintFor(int mode) => Modes.GetBase(mode) switch
+        {
+            2 => NebulaText.SilentHint,
+            1 => NebulaText.TurboHint,
+            _ => mode > 2 ? NebulaText.CustomHint : NebulaText.BalancedHint,
+        };
+
+        private static string IconFor(int mode) => Modes.GetBase(mode) switch { 2 => "leaf", 1 => "power", _ => "chart" };
+
+        private static void PaintQuick(NebulaCanvas c)
+        {
+            c.Txt(NebulaText.QuickAccess, 124, 886, c.F(11, FontStyle.Bold), c.Theme.Faint);
+
+            int gpuMode = AppConfig.Get("gpu_mode");
+            bool gpuAuto = AppConfig.Is("gpu_auto");
+            string gpuName = gpuMode switch { AsusACPI.GPUModeEco => NebulaText.Eco, AsusACPI.GPUModeUltimate => NebulaText.Ultimate, _ => NebulaText.Standard };
+            QuickCard(c, 124, "quick:gpu", "gpu", gpuAuto ? NebulaText.Optimized : gpuName, gpuAuto ? NebulaText.GraphicsAuto + " · " + gpuName : NebulaText.GraphicsMode);
+
+            int hz = AppConfig.Get("frequency", 0);
+            bool auto = AppConfig.Is("screen_auto");
+            QuickCard(c, 446, "quick:screen", "display", hz > 0 ? hz + " " + NebulaText.T("Hz", "Гц") : Dash, NebulaText.ScreenHint + (auto ? " · " + NebulaText.ScreenAuto : ""));
+
+            int limit = AppConfig.Get("charge_limit", 100);
+            QuickCard(c, 768, "quick:battery", "battery", limit + "%", NebulaText.BatteryHint);
+
+            string aura = Dash;
+            try
+            {
+                var modes = Aura.GetModes();
+                var m = (AuraMode)AppConfig.Get("aura_mode", (int)AuraMode.AuraStatic);
+                if (modes.TryGetValue(m, out var name)) aura = name;
+            }
+            catch { }
+            QuickCard(c, 1090, "quick:light", "light", aura, NebulaText.LightHint);
+        }
+
+        private static void QuickCard(NebulaCanvas c, float x, string id, string icon, string value, string hint)
+        {
+            var th = c.Theme;
+            var r = c.R(x, 902, 304, 96);
+            bool hv = c.IsHover(id);
+            c.Card(r, 14, hv ? th.Raised : th.Card, hv ? th.Accent : th.Line);
+            c.IconAt(icon, x + 20, 918, 24, hv);
+            c.Txt(value, x + 56, 936, c.F(19, FontStyle.Bold, true), th.Text);
+            c.Txt(hint, x + 20, 980, c.F(11), th.Muted);
+            c.Hit(r, id);
+        }
+
+        // ---- helpers -------------------------------------------------------------------------------
         private static int ParseLeadingInt(string s)
         {
             int i = 0; while (i < s.Length && !char.IsDigit(s[i])) i++;
@@ -171,164 +336,28 @@ namespace GHelper.UI.Nebula.Pages
             return int.TryParse(s[(i + 1)..p], out var v) ? v : -1;
         }
 
-        // ---- memory ----------------------------------------------------------------------------
-        private static void PaintMemory(NebulaCanvas c)
-        {
-            var used = HardwareControl.ramUsedMb;
-            var pct = HardwareControl.ramUsage;
-            if (used is null || pct is null) return;
-            var th = c.Theme;
-
-            c.Txt(NebulaText.Memory, 762, 741, c.F(10, FontStyle.Bold), th.Faint);
-            double totalGb = used.Value / 1024.0 / Math.Max(1, pct.Value) * 100.0;
-            c.Txt($"{used.Value / 1024.0:0.0} / {Math.Round(totalGb)} {NebulaText.Gb}", 906, 741, c.F(17, FontStyle.Bold, true), th.Text);
-            c.Bar(1110, 730, 284, 5, pct.Value / 100f, th.Blue);
-        }
-
-        // ---- modes -----------------------------------------------------------------------------
-        private static void PaintModes(NebulaCanvas c)
-        {
-            var th = c.Theme;
-            c.Txt(NebulaText.Mode, 124, 724, c.F(11, FontStyle.Bold), th.Faint);
-
-            var list = Modes.GetList();
-            int current = Modes.GetCurrent();
-            float x = 124;
-            int shown = 0;
-            var extra = new List<int>();
-
-            foreach (int mode in list)
-            {
-                if (shown >= 3) { extra.Add(mode); continue; }
-                ModeTile(c, x, mode, current == mode);
-                x += 198;
-                shown++;
-            }
-
-            if (extra.Count > 0)
-            {
-                bool active = extra.Contains(current);
-                string name = active ? Modes.GetName(current) : NebulaText.More;
-                var r = c.R(x, 745, 80, 84);
-                c.Card(r, 12, active ? th.AccentBg : c.IsHover("mode:more") ? th.Raised : th.Card, active ? th.Accent : th.Line);
-                c.Txt(name, x + 40, 793, c.F(13, FontStyle.Bold), active ? th.Accent : th.Text, StringAlignment.Center);
-                c.Hit(r, "mode:more");
-            }
-        }
-
-        private static void ModeTile(NebulaCanvas c, float x, int mode, bool active)
-        {
-            var th = c.Theme;
-            var r = c.R(x, 745, 185, 84);
-            c.Card(r, 12, active ? th.AccentBg : c.IsHover("mode:" + mode) ? th.Raised : th.Card, active ? th.Accent : th.Line);
-            if (active)
-                using (var b = new SolidBrush(th.Accent)) c.G.FillRectangle(b, c.R(x + 12, 827, 161, 2));
-            c.IconAt(IconFor(mode), x + 15, 761, 24, active);
-            c.Txt(Modes.GetName(mode), x + 49, 776, c.F(15, FontStyle.Bold), active ? th.Accent : th.Text);
-            c.Txt(HintFor(mode), x + 15, 811, c.F(11), th.Muted);
-            c.Hit(r, "mode:" + mode);
-        }
-
-        private static string HintFor(int mode) => Modes.GetBase(mode) switch
-        {
-            2 => NebulaText.SilentHint,
-            1 => NebulaText.TurboHint,
-            _ => mode > 2 ? NebulaText.CustomHint : NebulaText.BalancedHint,
-        };
-
-        private static string IconFor(int mode) => Modes.GetBase(mode) switch
-        {
-            2 => "leaf",
-            1 => "power",
-            _ => "chart",
-        };
-
-        // ---- quick access ----------------------------------------------------------------------
-        private static void PaintQuick(NebulaCanvas c)
-        {
-            c.Txt(NebulaText.QuickAccess, 124, 871, c.F(11, FontStyle.Bold), c.Theme.Faint);
-
-            int gpuMode = AppConfig.Get("gpu_mode");
-            bool gpuAuto = AppConfig.Is("gpu_auto");
-            string gpuName = gpuMode switch { AsusACPI.GPUModeEco => NebulaText.Eco, AsusACPI.GPUModeUltimate => NebulaText.Ultimate, _ => NebulaText.Standard };
-            QuickCard(c, 124, "quick:gpu", "gpu", gpuAuto ? NebulaText.Optimized : gpuName,
-                      gpuAuto ? NebulaText.GraphicsAuto + " · " + gpuName : NebulaText.GraphicsMode);
-
-            int hz = AppConfig.Get("frequency", 0);
-            bool auto = AppConfig.Is("screen_auto");
-            QuickCard(c, 446, "quick:screen", "display", hz > 0 ? hz + " " + NebulaText.T("Hz", "Гц") : "—",
-                      NebulaText.ScreenHint + (auto ? " · " + NebulaText.ScreenAuto : ""));
-
-            int limit = AppConfig.Get("charge_limit", 100);
-            QuickCard(c, 768, "quick:battery", "battery", limit + "%", NebulaText.BatteryHint);
-
-            string aura = "—";
-            try
-            {
-                var modes = Aura.GetModes();
-                var m = (AuraMode)AppConfig.Get("aura_mode", (int)AuraMode.AuraStatic);
-                if (modes.TryGetValue(m, out var name)) aura = name;
-            }
-            catch { }
-            QuickCard(c, 1090, "quick:light", "light", aura, NebulaText.LightHint);
-        }
-
-        private static void QuickCard(NebulaCanvas c, float x, string id, string icon, string value, string hint)
-        {
-            var th = c.Theme;
-            var r = c.R(x, 888, 304, 125);
-            bool hv = c.IsHover(id);
-            c.Card(r, 14, hv ? th.Raised : th.Card, hv ? th.Accent : th.Line);
-            c.IconAt(icon, x + 20, 906, 24, hv);
-            c.Txt(value, x + 20, 964, c.F(21, FontStyle.Bold, true), th.Text);
-            c.Txt(hint, x + 20, 991, c.F(11), th.Muted);
-            c.Hit(r, id);
-        }
-
-        // ---- actions ---------------------------------------------------------------------------
+        // ---- actions -------------------------------------------------------------------------------
         public override bool Click(string id, Point at, NebulaForm form)
         {
             if (id == "mode:more")
             {
                 int current = Modes.GetCurrent();
-                Menu(form, at, Modes.GetList().Skip(3).Select(m => (Modes.GetName(m), m == current, (Action)(() => Program.modeControl.SetPerformanceMode(m, true)))));
+                Menu(form, at, Modes.GetList().Skip(6).Select(m => (Modes.GetName(m), m == current, (Action)(() => Program.modeControl.SetPerformanceMode(m, true)))));
                 return true;
             }
-            if (id.StartsWith("mode:"))
-            {
-                Program.modeControl.SetPerformanceMode(int.Parse(id[5..]), true);
-                return true;
-            }
+            if (id.StartsWith("mode:")) { Program.modeControl.SetPerformanceMode(int.Parse(id[5..]), true); return true; }
+            if (id.StartsWith("overview:dev:")) { form.ShowPage("mouse"); return true; }
 
             switch (id)
             {
                 case "overview:fans": form.ShowPage("fan"); return true;
-                case "quick:gpu": ShowGpuMenu(form, at); return true;
+                case "overview:devices": form.ShowPage("mouse"); return true;
+                case "quick:gpu": form.ShowPage("gpu"); return true;
                 case "quick:screen": form.ShowPage("display"); return true;
                 case "quick:battery": form.ShowPage("battery"); return true;
-                case "quick:light": Program.settingsForm.CycleAuraMode(1); return true;
+                case "quick:light": form.ShowPage("light"); return true;
             }
             return false;
-        }
-
-        private static void ShowGpuMenu(NebulaForm form, Point at)
-        {
-            int current = AppConfig.Get("gpu_mode");
-            bool auto = AppConfig.Is("gpu_auto");
-            var items = new List<(string, bool, Action)>
-            {
-                (NebulaText.Eco, !auto && current == AsusACPI.GPUModeEco, () => Program.gpuControl.SetGPUMode(AsusACPI.GPUModeEco)),
-                (NebulaText.Standard, !auto && current == AsusACPI.GPUModeStandard, () => Program.gpuControl.SetGPUMode(AsusACPI.GPUModeStandard)),
-            };
-            if (Program.settingsForm.isMuxGpu)
-                items.Add((NebulaText.Ultimate, !auto && current == AsusACPI.GPUModeUltimate, () => Program.gpuControl.SetGPUMode(AsusACPI.GPUModeUltimate)));
-            items.Add((NebulaText.Optimized, auto, () =>
-            {
-                AppConfig.Set("gpu_auto", auto ? 0 : 1);
-                Program.settingsForm.VisualiseGPUMode();
-                Program.gpuControl.AutoGPUMode(true);
-            }));
-            Menu(form, at, items);
         }
     }
 }

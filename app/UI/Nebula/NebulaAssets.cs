@@ -55,7 +55,28 @@ namespace GHelper.UI.Nebula
             });
         }
 
-        public static Image? Hero => Load("Nebula.hero-laptop.jpg");
+        /// <summary>Device render: %APPDATA%\Crateless\hero.png / hero.jpg if the user dropped one there, otherwise the kit render.</summary>
+        public static Image? Hero => Cache.GetOrAdd("hero:src", _ =>
+        {
+            try
+            {
+                string dir = Logger.appPath;
+                foreach (var name in new[] { "hero.png", "hero.jpg", "hero.jpeg" })
+                {
+                    string path = Path.Combine(dir, name);
+                    if (File.Exists(path))
+                    {
+                        using var fs = File.OpenRead(path);
+                        using var ms = new MemoryStream();
+                        fs.CopyTo(ms); ms.Position = 0;
+                        Logger.WriteLine("Nebula hero: " + path);
+                        return new Bitmap(ms);
+                    }
+                }
+            }
+            catch (Exception ex) { Logger.WriteLine("Nebula hero: " + ex.Message); }
+            return Load("Nebula.hero-laptop.jpg");
+        });
 
         /// <summary>Hero render fitted into the given width, cached by width.</summary>
         public static Image? HeroScaled(int width)

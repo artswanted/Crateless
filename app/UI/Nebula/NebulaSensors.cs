@@ -16,6 +16,22 @@ namespace GHelper.UI.Nebula
         public static float? DgpuPower;
         public static DateTime LastRead = DateTime.MinValue;
 
+        public static int? CpuMhz;
+        public static (long usedGb, long totalGb)? Disk;
+
+        private static System.Diagnostics.PerformanceCounter? cpuPerf;
+        private static bool cpuPerfFailed;
+        private static readonly Lazy<int> cpuBaseMhz = new(() =>
+        {
+            try
+            {
+                using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+                return key?.GetValue("~MHz") is int v ? v : 0;
+            }
+            catch { return 0; }
+        });
+        private static int diskTick;
+
         // AppConfig.IsAMDiGPU() means "iGPU-only laptop"; here we want "has an AMD iGPU at all".
         public static readonly bool HasIgpu = AppConfig.IsAMDiGPU() || PawnIO.CpuInfo.Name.Contains("Radeon", StringComparison.OrdinalIgnoreCase);
 
@@ -49,6 +65,32 @@ namespace GHelper.UI.Nebula
             var ram = HardwareControl.GetRAMInfo();
             HardwareControl.ramUsage = ram?.percent;
             HardwareControl.ramUsedMb = ram?.usedMb;
+
+            // CPU frequency: % Processor Performance × base clock (same source Task Manager uses)
+            if (!cpuPerfFailed)
+            {
+                try
+                {
+                    cpuPerf ??= new System.Diagnostics.PerformanceCounter("Processor Information", "% Processor Performance", "_Total", true);
+                    float perf = cpuPerf.NextValue();
+                    int baseMhz = cpuBaseMhz.Value;
+                    CpuMhz = perf > 0 && baseMhz > 0 ? (int)Math.Round(baseMhz * perf / 100f) : null;
+                }
+                catch { cpuPerfFailed = true; CpuMhz = null; }
+            }
+
+            // system drive, every 30 s
+            if (diskTick++ % 30 == 0)
+            {
+                try
+                {
+                    var d = new DriveInfo(Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\");
+                    long total = d.TotalSize / (1024L * 1024 * 1024);
+                    long used = (d.TotalSize - d.TotalFreeSpace) / (1024L * 1024 * 1024);
+                    Disk = (used, total);
+                }
+                catch { Disk = null; }
+            }
         }
 
         /// <summary>Call on the UI thread after Read().</summary>
