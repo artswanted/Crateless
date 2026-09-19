@@ -400,8 +400,14 @@ namespace GHelper.UI.Nebula
                 float ratio = Math.Min(box.Width / hero.Width, box.Height / hero.Height);
                 float w = hero.Width * ratio, h = hero.Height * ratio;
                 var dst = new RectangleF(box.X + (box.Width - w) / 2, box.Y + (box.Height - h) / 2, w, h);
-                g.DrawImage(hero, dst);
-                FadeEdges(g, dst, S(48));
+                using (var clip = Rounded(dst, S(NebulaTheme.RadiusCard + 4)))
+                {
+                    var saved = g.Clip;
+                    g.SetClip(clip, CombineMode.Intersect);
+                    g.DrawImage(hero, dst);
+                    FadeEdges(g, dst, S(48));
+                    g.Clip = saved;
+                }
             }
 
             bool connected = Program.acpi?.IsConnected() ?? false;
