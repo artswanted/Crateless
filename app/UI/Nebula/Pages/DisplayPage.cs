@@ -67,7 +67,7 @@ namespace GHelper.UI.Nebula.Pages
                 int b = brightnessDraft >= 0 ? brightnessDraft : VisualControl.GetBrightness();
                 c.Txt(NebulaText.T("Brightness (flicker-free)", "Яркость (без мерцания)"), 256, row, c.F(12), th.Muted);
                 c.Txt(b + "%", 615, row, c.F(14, FontStyle.Bold), th.Text, StringAlignment.Far);
-                c.Slider(256, row + 18, 359, b / 100f, "display:brightness");
+                c.Slider(256, row + 18, 359, b / 100f, "slider:display:brightness");
                 row += 70;
             }
 
@@ -203,7 +203,7 @@ namespace GHelper.UI.Nebula.Pages
 
         public override void Drag(string id, float t, bool done)
         {
-            if (id != "display:brightness") return;
+            if (id != "slider:display:brightness") return;
             brightnessDraft = (int)Math.Round(t * 100);
             if (done)
             {

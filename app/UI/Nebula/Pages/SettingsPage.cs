@@ -79,6 +79,12 @@ namespace GHelper.UI.Nebula.Pages
 
             c.Button(256, 639, 359, 36, NebulaText.T("Check for app updates", "Проверить обновления приложения"), "settings:appupdate", primary: false);
 
+            // ---- classic extras --------------------------------------------------------------------
+            c.Surface(236, 714, 818, 70);
+            c.Txt(NebulaText.T("Additional options (classic panel)", "Дополнительные параметры (классическая панель)"), 256, 745, c.F(13), th.Text);
+            c.Txt(NebulaText.T("Backlight timeouts, VRAM/APU memory, cores, ASPM, boot sound, clamshell, ACPI debug…", "Таймауты подсветки, память VRAM/APU, ядра, ASPM, звук при загрузке, крышка, ACPI-отладка…"), 256, 766, c.F(10), th.Faint);
+            c.Button(873, 731, 161, 36, NebulaText.T("Open", "Открыть"), "settings:extra", primary: false);
+
             // ---- about -------------------------------------------------------------------------------
             c.Surface(651, 389, 403, 309);
             var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
@@ -94,8 +100,8 @@ namespace GHelper.UI.Nebula.Pages
             // ---- quit ---------------------------------------------------------------------------------
             var f = c.F(12, FontStyle.Bold);
             string quit = NebulaText.T("Quit Crateless", "Закрыть Crateless");
-            c.Txt(quit, 1054, 740, f, c.IsHover("settings:quit") ? th.Danger : th.Faint, StringAlignment.Far);
-            c.Hit(c.R(1054 - c.TextWidth(quit, f) - 8, 722, c.TextWidth(quit, f) + 16, 26), "settings:quit");
+            c.Txt(quit, 1054, 830, f, c.IsHover("settings:quit") ? th.Danger : th.Faint, StringAlignment.Far);
+            c.Hit(c.R(1054 - c.TextWidth(quit, f) - 8, 812, c.TextWidth(quit, f) + 16, 26), "settings:quit");
         }
 
         public override bool Click(string id, Point at, NebulaForm form)
@@ -157,6 +163,7 @@ namespace GHelper.UI.Nebula.Pages
                 case "settings:repo":
                     try { Process.Start(new ProcessStartInfo("https://github.com/artswanted/Crateless") { UseShellExecute = true }); } catch { }
                     return true;
+                case "settings:extra": form.ShowPage("extra"); return true;
                 case "settings:quit": Program.settingsForm.QuitApp(); return true;
             }
             return false;

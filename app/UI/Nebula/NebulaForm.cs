@@ -71,7 +71,7 @@ namespace GHelper.UI.Nebula
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             DoubleBuffered = true;
 
-            foreach (var p in new NebulaPage[] { new OverviewPage(), new BatteryPage(), new DisplayPage(), new LightPage(), new DevicesPage(), new SettingsPage() })
+            foreach (var p in new NebulaPage[] { new OverviewPage(), new PowerPage(), new FanPage(), new GpuPage(), new BatteryPage(), new DisplayPage(), new LightPage(), new KeysPage(), new DevicesPage(), new SettingsPage() })
                 pages[p.Id] = p;
             page = pages["overview"];
 
@@ -138,23 +138,7 @@ namespace GHelper.UI.Nebula
 
             switch (id)
             {
-                case "power":
-                case "fan":
-                case "gpu":
-                {
-                    var fans = Program.settingsForm.fansForm;
-                    if (fans is null || fans.Text == "" || fans.IsDisposed)
-                    {
-                        fans = new Fans { Embedded = true };
-                        Program.settingsForm.fansForm = fans;
-                    }
-                    Embed(fans);
-                    fans.ToggleNavigation(id == "gpu" ? 1 : id == "power" ? 2 : 0);
-                    page = null; pageId = id;
-                    Invalidate();
-                    return;
-                }
-                case "keyboard":
+                case "extra":
                 {
                     var extra = Program.settingsForm.extraForm;
                     if (extra is null || extra.Text == "" || extra.IsDisposed)
@@ -163,12 +147,11 @@ namespace GHelper.UI.Nebula
                         Program.settingsForm.extraForm = extra;
                     }
                     Embed(extra);
-                    page = null; pageId = id;
+                    page = null; pageId = "keyboard";
                     Invalidate();
                     return;
                 }
                 default:
-                    // light / mouse / settings: classic window until redesigned
                     Program.ShowLegacySettings();
                     return;
             }
@@ -378,7 +361,7 @@ namespace GHelper.UI.Nebula
             base.OnMouseMove(e);
             if (dragId.Length > 0)
             {
-                Drag(e.X, false);
+                Drag(e.Location, false);
                 return;
             }
             var (id, t, _) = HitAt(e.Location);
@@ -395,13 +378,13 @@ namespace GHelper.UI.Nebula
             base.OnMouseDown(e);
             if (e.Button != MouseButtons.Left || page is null) return;
             var (id, _, rect) = HitAt(e.Location);
-            if (id.EndsWith(":slider") || id.Contains(":brightness"))
+            if (id.StartsWith("slider:"))
             {
                 dragId = id;
                 // the hit rect has 8 px padding on each side of the track
                 dragTrack = new RectangleF(rect.X + S(8), rect.Y, rect.Width - S(16), rect.Height);
                 Capture = true;
-                Drag(e.X, false);
+                Drag(e.Location, false);
             }
         }
 
@@ -410,17 +393,31 @@ namespace GHelper.UI.Nebula
             base.OnMouseUp(e);
             if (dragId.Length > 0)
             {
-                Drag(e.X, true);
+                Drag(e.Location, true);
                 dragId = "";
                 Capture = false;
             }
         }
 
-        private void Drag(int x, bool done)
+        private void Drag(Point p, bool done)
         {
-            if (page is null || dragTrack.Width <= 0) return;
-            float t = Math.Clamp((x - dragTrack.X) / dragTrack.Width, 0f, 1f);
-            try { page.Drag(dragId, t, done); }
+            if (page is null) return;
+            try
+            {
+                if (dragId.StartsWith("slider:fan:pt:") && page is FanPage fan)
+                {
+                    var plot = FanPage.PlotRect;
+                    float tx = Math.Clamp((p.X / k - plot.X) / plot.Width, 0f, 1f);
+                    float ty = Math.Clamp((p.Y / k - plot.Y) / plot.Height, 0f, 1f);
+                    fan.DragPoint(int.Parse(dragId[14..]), tx, ty, (ModifierKeys & Keys.Shift) == Keys.Shift);
+                    if (done) fan.Drag(dragId, 0, true);
+                }
+                else if (dragTrack.Width > 0)
+                {
+                    float t = Math.Clamp((p.X - dragTrack.X) / dragTrack.Width, 0f, 1f);
+                    page.Drag(dragId, t, done);
+                }
+            }
             catch (Exception ex) { Logger.WriteLine($"Nebula drag {dragId}: {ex.Message}"); }
             Invalidate();
         }
@@ -430,7 +427,7 @@ namespace GHelper.UI.Nebula
             base.OnMouseClick(e);
             if (e.Button != MouseButtons.Left) return;
             var (id, _, _) = HitAt(e.Location);
-            if (id.Length == 0 || id.EndsWith(":slider") || id.Contains(":brightness")) return;
+            if (id.Length == 0 || id.StartsWith("slider:")) return;
 
             try
             {

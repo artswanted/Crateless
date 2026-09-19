@@ -67,7 +67,7 @@ namespace GHelper.UI.Nebula.Pages
             c.Txt(Draft + "%", 1034, 244, c.F(14, FontStyle.Bold), th.Text, StringAlignment.Far);
 
             if (!discrete)
-                c.Slider(602, 262, 432, (Draft - 40) / 60f, "battery:slider");
+                c.Slider(602, 262, 432, (Draft - 40) / 60f, "slider:battery");
 
             float segX = 602;
             foreach (int v in discreteValues)
@@ -139,7 +139,7 @@ namespace GHelper.UI.Nebula.Pages
 
         public override void Drag(string id, float t, bool done)
         {
-            if (id != "battery:slider") return;
+            if (id != "slider:battery") return;
             int v = 40 + (int)Math.Round(t * 60 / 5) * 5;
             draft = Math.Clamp(v, 40, 100);
         }
