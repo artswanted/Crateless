@@ -338,6 +338,15 @@ namespace GHelper.UI.Nebula
             c.Txt("C R A T E L E S S", 28, 28, c.F(12, FontStyle.Bold), theme.Accent);
             c.Txt("CONTROL CENTER", 226, 28, c.F(9), theme.Faint);
 
+            // compact view switch, top-right of the top bar
+            {
+                float cx = ClientSize.Width / k - 52;
+                var cr = R(cx, 6, 40, 31);
+                if (hover == "rail:compact") c.Card(cr, 8, theme.Raised);
+                c.IconAt("compact", cx + 8, 9.5f, 24, hover == "rail:compact");
+                c.Hit(cr, "rail:compact", NebulaText.T("Compact view", "Компактный вид"));
+            }
+
             // rail toggle (hamburger) at the top of the rail
             {
                 var tr = R(16, 62, 54, 40);
@@ -507,6 +516,12 @@ namespace GHelper.UI.Nebula
 
             try
             {
+                if (id == "rail:compact")
+                {
+                    Hide();
+                    Program.NebulaCompactToggle();
+                    return;
+                }
                 if (id == "rail:toggle")
                 {
                     railExpanded = !railExpanded;

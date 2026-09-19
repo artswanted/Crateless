@@ -414,6 +414,15 @@ namespace GHelper
         }
 
         public static UI.Nebula.NebulaForm? nebulaForm;
+        public static UI.Nebula.NebulaCompactForm? nebulaCompact;
+
+        /// <summary>Shows the compact fly-out and remembers it as the tray view.</summary>
+        public static void NebulaCompactToggle()
+        {
+            AppConfig.Set("nebula_compact", 1);
+            nebulaCompact ??= new UI.Nebula.NebulaCompactForm();
+            nebulaCompact.Toggle();
+        }
 
         /// <summary>Shows the Nebula shell on the given page (rail id).</summary>
         public static void NebulaPage(string page)
@@ -428,6 +437,14 @@ namespace GHelper
             {
                 // Nebula shell (config "theme": "nebula"): the classic window stays available
                 // through ShowLegacySettings() until every section is redesigned.
+                if (AppConfig.Is("nebula_compact") && trayClick)
+                {
+                    if (nebulaForm is { Visible: true }) nebulaForm.Hide();
+                    nebulaCompact ??= new UI.Nebula.NebulaCompactForm();
+                    nebulaCompact.Toggle();
+                    return;
+                }
+                if (nebulaCompact is { Visible: true }) nebulaCompact.Hide();
                 nebulaForm ??= new UI.Nebula.NebulaForm();
                 nebulaForm.Toggle();
                 return;
