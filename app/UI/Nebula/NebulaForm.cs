@@ -54,8 +54,8 @@ namespace GHelper.UI.Nebula
             ("battery",  "battery",  () => NebulaText.RailBattery,  false),
             ("light",    "light",    () => NebulaText.RailLight,    false),
             ("keyboard", "keyboard", () => NebulaText.RailKeyboard, false),
-            ("mouse",    "mouse",    () => NebulaText.RailMouse,    true),
-            ("settings", "settings", () => NebulaText.RailSettings, true),
+            ("mouse",    "mouse",    () => NebulaText.RailMouse,    false),
+            ("settings", "settings", () => NebulaText.RailSettings, false),
         };
 
         public NebulaForm()
@@ -71,7 +71,7 @@ namespace GHelper.UI.Nebula
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             DoubleBuffered = true;
 
-            foreach (var p in new NebulaPage[] { new OverviewPage(), new BatteryPage(), new DisplayPage(), new LightPage() })
+            foreach (var p in new NebulaPage[] { new OverviewPage(), new BatteryPage(), new DisplayPage(), new LightPage(), new DevicesPage(), new SettingsPage() })
                 pages[p.Id] = p;
             page = pages["overview"];
 
