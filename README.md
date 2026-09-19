@@ -17,11 +17,10 @@ needs the .NET 10 Desktop Runtime, `Crateless-standalone.exe` does not.
 
 ## Why
 
-Armoury Crate on the GA605WI kept resetting the Windows power mode a few seconds after
-every profile switch (event 51 from UserModePowerService, raised by
-ArmouryCrate.UserSessionHelper.exe). "Silent" ended up running on top of the
-"Best performance" overlay. G-Helper sets the plan and the overlay once and leaves them
-alone, which is what I wanted, so I started from there.
+Armoury Crate needs a dozen services and an account to switch a fan profile, and on some
+machines it quietly overrides the Windows power mode a few seconds after you change it.
+The modes, curves and limits themselves live in the BIOS. Crateless talks to the same
+ASUS driver, applies your choice once and stays out of the way.
 
 ## What it does
 
