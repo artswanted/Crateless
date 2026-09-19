@@ -52,7 +52,7 @@ namespace GHelper.UI.Nebula
             ("gpu",      "gpu",      () => NebulaText.RailGpu,      false),
             ("display",  "display",  () => NebulaText.RailDisplay,  false),
             ("battery",  "battery",  () => NebulaText.RailBattery,  false),
-            ("light",    "light",    () => NebulaText.RailLight,    true),
+            ("light",    "light",    () => NebulaText.RailLight,    false),
             ("keyboard", "keyboard", () => NebulaText.RailKeyboard, false),
             ("mouse",    "mouse",    () => NebulaText.RailMouse,    true),
             ("settings", "settings", () => NebulaText.RailSettings, true),
@@ -71,7 +71,7 @@ namespace GHelper.UI.Nebula
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             DoubleBuffered = true;
 
-            foreach (var p in new NebulaPage[] { new OverviewPage(), new BatteryPage(), new DisplayPage() })
+            foreach (var p in new NebulaPage[] { new OverviewPage(), new BatteryPage(), new DisplayPage(), new LightPage() })
                 pages[p.Id] = p;
             page = pages["overview"];
 
