@@ -339,5 +339,11 @@
  "2 min": "2 хв",
  "3 min": "3 хв",
  "5 min": "5 хв",
- "10 min": "10 хв"
+ "10 min": "10 хв",
+ "Focus mode": "Цільовий режим",
+ "Dims everything except the active window.": "Затемнює все, крім активного вікна.",
+ "Dim when idle": "Затемнювати під час простою",
+ "after": "через",
+ "Windows dark theme": "Темна тема Windows",
+ "Less light on the panel, fewer static bright areas.": "Менше світла на панелі та статичних яскравих зон."
 }

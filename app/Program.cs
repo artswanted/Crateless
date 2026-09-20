@@ -86,6 +86,7 @@ namespace GHelper
             toast = new ToastForm();
 
             hardwareOverlay = new HardwareOverlay();
+            try { UI.Nebula.OledCare.Init(); } catch (Exception ex) { Logger.WriteLine("OLED care init: " + ex.Message); }
 
             ProcessHelper.CheckAlreadyRunning();
             ProcessHelper.SetPriority();

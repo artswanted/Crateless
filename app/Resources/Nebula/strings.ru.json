@@ -333,5 +333,11 @@
  "Open repository": "Открыть репозиторий",
  "No account. No paid modes.": "Без аккаунта. Без платных режимов.",
  "Quit Crateless": "Закрыть Crateless",
- "The language changes after Crateless restarts.": "Язык сменится после перезапуска Crateless."
+ "The language changes after Crateless restarts.": "Язык сменится после перезапуска Crateless.",
+ "Focus mode": "Целевой режим",
+ "Dims everything except the active window.": "Затемняет всё, кроме активного окна.",
+ "Dim when idle": "Затемнять при простое",
+ "after": "через",
+ "Windows dark theme": "Тёмная тема Windows",
+ "Less light on the panel, fewer static bright areas.": "Меньше света на панели и статичных ярких зон."
 }

@@ -17,7 +17,7 @@ namespace GHelper.UI.Nebula.Pages
         private int elmb = -1;
         private bool hdr;
         private bool overdriveSupported;
-        private bool taskbarAutoHide, transparency;
+        private bool taskbarAutoHide, transparency, darkTheme;
 
         public override void Refresh(bool opened)
         {
@@ -31,6 +31,7 @@ namespace GHelper.UI.Nebula.Pages
             {
                 try { taskbarAutoHide = OledCare.IsTaskbarAutoHide(); } catch { }
                 try { transparency = OledCare.IsTransparencyEnabled(); } catch { }
+                try { darkTheme = OledCare.IsDarkTheme(); } catch { }
             }
         }
 
@@ -116,7 +117,7 @@ namespace GHelper.UI.Nebula.Pages
             }
 
             // ---- panel & behaviour ----------------------------------------------------------------
-            int panelRows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 2 : 0);
+            int panelRows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 5 : 0);
             float panelH = Math.Max(361, 76 + panelRows * 85 + 20);
             c.Surface(651, 337, 403, panelH);
             c.Txt(NebulaText.T("Panel and behaviour", "Панель и поведение"), 671, 367, c.F(15, FontStyle.Bold), th.Text);
@@ -154,6 +155,23 @@ namespace GHelper.UI.Nebula.Pages
                 c.Txt(NebulaText.T("Windows transparency effects switch.", "Переключатель эффектов прозрачности Windows."), 671, y + 31, c.F(11), th.Faint);
                 c.Toggle(996, y - 17, transparency, "display:transparency");
                 y += 85;
+
+                c.Txt(NebulaText.T("Focus mode", "Целевой режим"), 671, y, c.F(13), th.Text);
+                c.Txt(NebulaText.T("Dims everything except the active window.", "Затемняет всё, кроме активного окна."), 671, y + 31, c.F(11), th.Faint);
+                c.Toggle(996, y - 17, OledCare.IsFocusDim, "display:focusdim");
+                y += 85;
+
+                c.Txt(NebulaText.T("Dim when idle", "Затемнять при простое"), 671, y, c.F(13), th.Text);
+                string idle = NebulaText.T("after", "через") + " " + OledCare.IdleMinutes + " " + NebulaText.T("min", "мин") + "  ⌄";
+                c.Txt(idle, 671, y + 31, c.F(11, FontStyle.Bold), c.IsHover("display:idlemin") ? th.Text : th.Accent);
+                c.Hit(c.R(671, y + 14, 200, 26), "display:idlemin");
+                c.Toggle(996, y - 17, OledCare.IsIdleDim, "display:idledim");
+                y += 85;
+
+                c.Txt(NebulaText.T("Windows dark theme", "Тёмная тема Windows"), 671, y, c.F(13), th.Text);
+                c.Txt(NebulaText.T("Less light on the panel, fewer static bright areas.", "Меньше света на панели и статичных ярких зон."), 671, y + 31, c.F(11), th.Faint);
+                c.Toggle(996, y - 17, darkTheme, "display:darktheme");
+                y += 85;
             }
 
             var link = c.F(12, FontStyle.Bold);
@@ -169,7 +187,7 @@ namespace GHelper.UI.Nebula.Pages
         {
             get
             {
-                int rows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 2 : 0);
+                int rows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 5 : 0);
                 return 337 + Math.Max(361, 76 + rows * 85 + 20) + 20;
             }
         }
@@ -212,6 +230,17 @@ namespace GHelper.UI.Nebula.Pages
                 case "display:transparency":
                     transparency = !transparency;
                     OledCare.SetTransparency(transparency);
+                    return true;
+                case "display:focusdim": OledCare.SetFocusDim(!OledCare.IsFocusDim); return true;
+                case "display:idledim": OledCare.SetIdleDim(!OledCare.IsIdleDim); return true;
+                case "display:idlemin":
+                    Menu(form, at, new[] { 1, 2, 3, 5, 10, 15 }.Select(m => (m + " " + NebulaText.T("min", "мин"), m == OledCare.IdleMinutes, (Action)(() => AppConfig.Set("oled_idle_min", m)))));
+                    return true;
+                case "display:darktheme":
+                    darkTheme = !darkTheme;
+                    OledCare.SetDarkTheme(darkTheme);
+                    Program.settingsForm.InitTheme(true);
+                    form.ApplyTheme();
                     return true;
                 case "display:windows":
                     try { Process.Start(new ProcessStartInfo("ms-settings:display") { UseShellExecute = true }); } catch { }
