@@ -17,6 +17,7 @@ namespace GHelper.UI.Nebula.Pages
         private int elmb = -1;
         private bool hdr;
         private bool overdriveSupported;
+        private bool taskbarAutoHide, transparency;
 
         public override void Refresh(bool opened)
         {
@@ -26,6 +27,11 @@ namespace GHelper.UI.Nebula.Pages
             try { elmb = ScreenELMB.Get(); } catch { elmb = -1; }
             try { hdr = ScreenCCD.GetHDRStatus(out _); } catch { hdr = false; }
             try { overdriveSupported = Program.acpi.IsOverdriveSupported(); } catch { overdriveSupported = false; }
+            if (oled)
+            {
+                try { taskbarAutoHide = OledCare.IsTaskbarAutoHide(); } catch { }
+                try { transparency = OledCare.IsTransparencyEnabled(); } catch { }
+            }
         }
 
         public override void Paint(NebulaCanvas c)
@@ -110,7 +116,9 @@ namespace GHelper.UI.Nebula.Pages
             }
 
             // ---- panel & behaviour ----------------------------------------------------------------
-            c.Surface(651, 337, 403, 361);
+            int panelRows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 2 : 0);
+            float panelH = Math.Max(361, 76 + panelRows * 85 + 20);
+            c.Surface(651, 337, 403, panelH);
             c.Txt(NebulaText.T("Panel and behaviour", "Панель и поведение"), 671, 367, c.F(15, FontStyle.Bold), th.Text);
 
             float y = 413;
@@ -135,6 +143,19 @@ namespace GHelper.UI.Nebula.Pages
             c.Txt(hdr ? NebulaText.T("On in Windows.", "Включён в Windows.") : NebulaText.T("Off. Managed by Windows.", "Выключен. Управляется Windows."), 671, y + 31, c.F(11), th.Faint);
             y += 85;
 
+            if (oled)
+            {
+                c.Txt(NebulaText.T("Auto-hide taskbar", "Автоскрытие панели задач"), 671, y, c.F(13), th.Text);
+                c.Txt(NebulaText.T("OLED care: less static content on screen.", "OLED Care: меньше статичного изображения."), 671, y + 31, c.F(11), th.Faint);
+                c.Toggle(996, y - 17, taskbarAutoHide, "display:taskbar");
+                y += 85;
+
+                c.Txt(NebulaText.T("Taskbar transparency", "Прозрачность панели задач"), 671, y, c.F(13), th.Text);
+                c.Txt(NebulaText.T("Windows transparency effects switch.", "Переключатель эффектов прозрачности Windows."), 671, y + 31, c.F(11), th.Faint);
+                c.Toggle(996, y - 17, transparency, "display:transparency");
+                y += 85;
+            }
+
             var link = c.F(12, FontStyle.Bold);
             c.Txt(NebulaText.T("Windows display settings", "Параметры экрана Windows"), 671, y, c.F(13), th.Text);
             c.Txt(NebulaText.T("Open  ↗", "Открыть  ↗"), 1034, y, link, c.IsHover("display:windows") ? th.Text : th.Accent, StringAlignment.Far);
@@ -142,6 +163,15 @@ namespace GHelper.UI.Nebula.Pages
 
             if (external)
                 c.Txt(NebulaText.T("External displays are detected separately; these settings apply to the built-in panel.", "Внешние экраны определяются отдельно; настройки относятся к встроенной панели."), 671, 653, c.F(11), th.Faint);
+        }
+
+        public override float ContentHeight
+        {
+            get
+            {
+                int rows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 2 : 0);
+                return 337 + Math.Max(361, 76 + rows * 85 + 20) + 20;
+            }
         }
 
         public override bool Click(string id, Point at, NebulaForm form)
@@ -175,6 +205,14 @@ namespace GHelper.UI.Nebula.Pages
                     elmb = v;
                     return true;
                 }
+                case "display:taskbar":
+                    taskbarAutoHide = !taskbarAutoHide;
+                    OledCare.SetTaskbarAutoHide(taskbarAutoHide);
+                    return true;
+                case "display:transparency":
+                    transparency = !transparency;
+                    OledCare.SetTransparency(transparency);
+                    return true;
                 case "display:windows":
                     try { Process.Start(new ProcessStartInfo("ms-settings:display") { UseShellExecute = true }); } catch { }
                     return true;
