@@ -348,7 +348,7 @@
  "Less light on the panel, fewer static bright areas.": "Менше світла на панелі та статичних яскравих зон.",
  "Pixel shift": "Зсув пікселів",
  "Not supported on this system.": "На цій системі недоступно.",
- "moves the image by up to 3 px every": "зсуває зображення до 3 px кожні",
  "s": "с",
- "Test": "Перевірити"
+ "Test": "Перевірити",
+ "nudges windows by up to 2 px every": "зсуває вікна до 2 px кожні"
 }

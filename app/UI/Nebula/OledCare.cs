@@ -146,10 +146,11 @@ namespace GHelper.UI.Nebula
                         Logger.WriteLine("OLED idle dim: dimmed from " + savedBrightness);
                     }
                 }
-                else if (idleDimmed && idle < 5000)
+                else if (idleDimmed && idle < 1500)
                 {
                     RestoreIdle();
                 }
+                idleTimer!.Interval = idleDimmed ? 500 : 5000;
             }
             catch (Exception ex) { Logger.WriteLine("OLED idle dim: " + ex.Message); }
         }
@@ -166,22 +167,32 @@ namespace GHelper.UI.Nebula
             }
         }
 
-        // ---- pixel shift (Magnification API full-screen transform) --------------------------------
-        [DllImport("magnification.dll")] private static extern bool MagInitialize();
-        [DllImport("magnification.dll")] private static extern bool MagUninitialize();
-        [DllImport("magnification.dll")] private static extern bool MagSetFullscreenTransform(float magLevel, int xOffset, int yOffset);
+        // ---- pixel shift (nudge top-level windows, the OLEDShift approach) -------------------------
+        // The Magnification API accepts a full-screen transform from a normal process but never
+        // applies it, so we move the windows themselves by a pixel or two along a closed path.
+        private delegate bool EnumWindowsProc(nint hWnd, nint lParam);
+        [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc proc, nint lParam);
+        [DllImport("user32.dll")] private static extern bool IsWindowVisible(nint hWnd);
+        [DllImport("user32.dll")] private static extern bool IsIconic(nint hWnd);
+        [DllImport("user32.dll")] private static extern bool IsZoomed(nint hWnd);
+        [DllImport("user32.dll")] private static extern int GetWindowTextLength(nint hWnd);
+        [DllImport("user32.dll")] private static extern bool GetWindowRect(nint hWnd, out RECT rect);
+        [DllImport("user32.dll")] private static extern bool SetWindowPos(nint hWnd, nint after, int x, int y, int cx, int cy, uint flags);
+        [DllImport("user32.dll")] private static extern nint GetWindowLongPtr(nint hWnd, int index);
+        [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint hWnd, out uint pid);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(nint hWnd, System.Text.StringBuilder sb, int max);
+
+        private const int GWL_EXSTYLE = -20;
+        private const long WS_EX_TOOLWINDOW = 0x80, WS_EX_NOACTIVATE = 0x8000000;
+        private const uint SWP_NOSIZE = 0x1, SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10, SWP_NOOWNERZORDER = 0x200;
 
         private static System.Windows.Forms.Timer? shiftTimer;
-        private static bool magReady, magFailed;
         private static int shiftStep;
         private static long lastShift;
-        private static int shiftLogged;
-        private const int ShiftRange = 4; // px of travel; magnification is 1 + ShiftRange/screenWidth
-        // 3 px square walk; offsets must be >= 0 for the API, so the image moves up/left by 0..3 px
-        private static readonly (int x, int y)[] ShiftPath = { (0, 0), (1, 0), (2, 0), (3, 0), (3, 1), (3, 2), (3, 3), (2, 3), (1, 3), (0, 3), (0, 2), (0, 1), (1, 1), (2, 2), (2, 1), (1, 2) };
+        private static readonly (int x, int y)[] ShiftPath = { (0, 0), (1, 0), (2, 0), (2, 1), (2, 2), (1, 2), (0, 2), (0, 1) };
 
         public static bool IsPixelShift => shiftTimer is { Enabled: true };
-        public static bool PixelShiftUnsupported => magFailed;
+        public static bool PixelShiftUnsupported => false;
         public static int ShiftSeconds => Math.Clamp(AppConfig.Get("oled_shift_sec", 60), 10, 600);
 
         public static void SetPixelShift(bool on)
@@ -189,11 +200,6 @@ namespace GHelper.UI.Nebula
             AppConfig.Set("oled_pixel_shift", on ? 1 : 0);
             if (on)
             {
-                if (!magReady)
-                {
-                    try { magReady = MagInitialize(); } catch (Exception ex) { Logger.WriteLine("Magnification: " + ex.Message); magReady = false; }
-                    if (!magReady) { magFailed = true; AppConfig.Set("oled_pixel_shift", 0); return; }
-                }
                 shiftTimer ??= new System.Windows.Forms.Timer { Interval = 1000 };
                 shiftTimer.Tick -= ShiftTick;
                 shiftTimer.Tick += ShiftTick;
@@ -204,13 +210,8 @@ namespace GHelper.UI.Nebula
             else
             {
                 shiftTimer?.Stop();
-                if (magReady)
-                {
-                    try { MagSetFullscreenTransform(1.0f, 0, 0); MagUninitialize(); } catch { }
-                    shiftLogged = 0;
-                    magReady = false;
-                }
-                shiftStep = 0;
+                // walk back to the origin so windows end where the user left them
+                if (shiftStep != 0) { var (x, y) = ShiftPath[shiftStep]; Nudge(-x, -y); shiftStep = 0; }
                 Logger.WriteLine("OLED pixel shift: off");
             }
         }
@@ -219,45 +220,57 @@ namespace GHelper.UI.Nebula
         {
             if (Environment.TickCount64 - lastShift < ShiftSeconds * 1000L) return;
             lastShift = Environment.TickCount64;
+            var (x0, y0) = ShiftPath[shiftStep];
             shiftStep = (shiftStep + 1) % ShiftPath.Length;
-            var (x, y) = ShiftPath[shiftStep];
-            try
-            {
-                // At exactly 1.0x the API allows an offset range of 0, so we magnify by the smallest
-                // amount that leaves ShiftRange px of travel (docs: 0..width - width/magLevel).
-                var bounds = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
-                float mag = bounds.Width / (float)(bounds.Width - ShiftRange);
-                bool ok = MagSetFullscreenTransform(mag, x, y);
-                if (shiftLogged++ < 3) Logger.WriteLine($"OLED pixel shift: mag {mag:F5} offset {x},{y} -> {ok}");
-                if (!ok)
-                {
-                    Logger.WriteLine("OLED pixel shift: transform refused, disabling");
-                    magFailed = true;
-                    SetPixelShift(false);
-                }
-            }
-            catch (Exception ex) { Logger.WriteLine("OLED pixel shift: " + ex.Message); magFailed = true; SetPixelShift(false); }
+            var (x1, y1) = ShiftPath[shiftStep];
+            Nudge(x1 - x0, y1 - y0);
         }
 
-        /// <summary>Visible check: jumps the image between the two extremes a few times.</summary>
+        /// <summary>Moves every ordinary top-level window by (dx, dy). Maximized, full-screen, tool and own windows are left alone.</summary>
+        private static int Nudge(int dx, int dy)
+        {
+            if (dx == 0 && dy == 0) return 0;
+            int moved = 0;
+            try
+            {
+                EnumWindows((h, _) =>
+                {
+                    try
+                    {
+                        if (!IsWindowVisible(h) || IsIconic(h) || IsZoomed(h)) return true;
+                        if (GetWindowTextLength(h) == 0) return true;
+                        long ex = (long)GetWindowLongPtr(h, GWL_EXSTYLE);
+                        if ((ex & WS_EX_TOOLWINDOW) != 0 || (ex & WS_EX_NOACTIVATE) != 0) return true;
+                        GetWindowThreadProcessId(h, out uint pid);
+                        if (pid == Environment.ProcessId) return true;
+                        var sb = new System.Text.StringBuilder(64);
+                        GetClassName(h, sb, sb.Capacity);
+                        string cls = sb.ToString();
+                        if (cls is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd" or "Windows.UI.Core.CoreWindow") return true;
+                        if (!GetWindowRect(h, out var r)) return true;
+                        var mon = Screen.FromHandle(h).Bounds;
+                        bool full = r.left <= mon.Left && r.top <= mon.Top && r.right >= mon.Right && r.bottom >= mon.Bottom;
+                        if (full) return true;
+                        if (SetWindowPos(h, 0, r.left + dx, r.top + dy, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER)) moved++;
+                    }
+                    catch { }
+                    return true;
+                }, 0);
+            }
+            catch (Exception ex) { Logger.WriteLine("OLED pixel shift: " + ex.Message); }
+            return moved;
+        }
+
+        /// <summary>Visible check: nudges the windows back and forth by 12 px a few times.</summary>
         public static void TestPixelShift()
         {
-            if (!magReady) return;
-            var bounds = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
-            float mag = bounds.Width / (float)(bounds.Width - ShiftRange);
             int n = 0;
-            var t = new System.Windows.Forms.Timer { Interval = 400 };
+            var t = new System.Windows.Forms.Timer { Interval = 350 };
             t.Tick += (_, _) =>
             {
                 n++;
-                bool far = n % 2 == 1;
-                try { MagSetFullscreenTransform(mag, far ? ShiftRange : 0, far ? ShiftRange : 0); } catch { }
-                if (n >= 6)
-                {
-                    t.Stop(); t.Dispose();
-                    var (x, y) = ShiftPath[shiftStep];
-                    try { MagSetFullscreenTransform(mag, x, y); } catch { }
-                }
+                Nudge(n % 2 == 1 ? 12 : -12, n % 2 == 1 ? 12 : -12);
+                if (n >= 6) { t.Stop(); t.Dispose(); }
             };
             t.Start();
         }

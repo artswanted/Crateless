@@ -173,7 +173,7 @@ namespace GHelper.UI.Nebula.Pages
                     c.Txt(NebulaText.T("Not supported on this system.", "На этой системе недоступно."), 671, y + 31, c.F(11), th.Faint);
                 else
                 {
-                    string sh = NebulaText.T("moves the image by up to 3 px every", "сдвигает изображение до 3 px каждые") + " " + OledCare.ShiftSeconds + " " + NebulaText.T("s", "с") + "  ⌄";
+                    string sh = NebulaText.T("nudges windows by up to 2 px every", "сдвигает окна до 2 px каждые") + " " + OledCare.ShiftSeconds + " " + NebulaText.T("s", "с") + "  ⌄";
                     c.Txt(sh, 671, y + 31, c.F(11, FontStyle.Bold), c.IsHover("display:shiftsec") ? th.Text : th.Accent);
                     c.Hit(c.R(671, y + 14, 300, 26), "display:shiftsec");
                     if (OledCare.IsPixelShift)
