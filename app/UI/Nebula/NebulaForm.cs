@@ -58,6 +58,7 @@ namespace GHelper.UI.Nebula
             ("fan",      "fan",      () => NebulaText.RailFan,      false),
             ("gpu",      "gpu",      () => NebulaText.RailGpu,      false),
             ("display",  "display",  () => NebulaText.RailDisplay,  false),
+            ("visual",   "sun",      () => "GameVisual",             false),
             ("battery",  "battery",  () => NebulaText.RailBattery,  false),
             ("light",    "light",    () => NebulaText.RailLight,    false),
             ("keyboard", "keyboard", () => NebulaText.RailKeyboard, false),
@@ -78,7 +79,7 @@ namespace GHelper.UI.Nebula
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             DoubleBuffered = true;
 
-            foreach (var p in new NebulaPage[] { new OverviewPage(), new PowerPage(), new FanPage(), new GpuPage(), new BatteryPage(), new DisplayPage(), new LightPage(), new KeysPage(), new DevicesPage(), new SettingsPage() })
+            foreach (var p in new NebulaPage[] { new OverviewPage(), new PowerPage(), new FanPage(), new GpuPage(), new BatteryPage(), new DisplayPage(), new GameVisualPage(), new LightPage(), new KeysPage(), new DevicesPage(), new SettingsPage() })
                 pages[p.Id] = p;
             page = pages["overview"];
 

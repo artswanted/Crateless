@@ -367,5 +367,12 @@
  "Button bindings, lighting zones and DPI colours are in the device window.": "Прив'язки кнопок, зони підсвітки та кольори DPI — у вікні пристрою.",
  "Equalizer bands and microphone type are in the device window.": "Смуги еквалайзера та тип мікрофона — у вікні пристрою.",
  "Key bindings, per-key lighting and profiles are in the device window.": "Прив'язки клавіш, попіксельна підсвітка та профілі — у вікні пристрою.",
- "Follow the laptop keyboard colour": "Повторювати колір клавіатури ноутбука"
+ "Follow the laptop keyboard colour": "Повторювати колір клавіатури ноутбука",
+ "Colour presets of the panel. Fn+V cycles them.": "Колірні пресети панелі. Fn+V перемикає по колу.",
+ "This panel reports no GameVisual presets.": "Панель не повідомляє пресетів GameVisual.",
+ "Presets": "Пресети",
+ "Applied through ASUS Splendid. Off restores the panel's native output.": "Застосовуються через ASUS Splendid. Вимкнення повертає рідний вивід панелі.",
+ "Manual colour settings.": "Ручні налаштування кольору.",
+ "Colour profiles (ICC) for the panel are installed from the Windows colour settings if missing.": "ICC-профілі панелі за їх відсутності встановлюються з параметрів кольору Windows.",
+ "Colour presets: GameVisual  ↗": "Колірні пресети: GameVisual  ↗"
 }
