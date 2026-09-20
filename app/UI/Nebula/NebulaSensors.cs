@@ -18,6 +18,7 @@ namespace GHelper.UI.Nebula
 
         public static int? CpuMhz;
         public static int? GpuMhz, GpuMemMhz;          // dGPU current clocks (NVAPI), only while awake
+        public static int? GpuMv;                      // dGPU core voltage in mV when the driver reports it
         public static int? RamMhz;                     // configured memory speed (WMI, read once)
         private static NvAPIWrapper.GPU.PhysicalGPU? nvGpu;
         private static bool nvFailed, ramRead;
@@ -92,10 +93,17 @@ namespace GHelper.UI.Nebula
                     var clocks = nvGpu?.CurrentClockFrequencies;
                     GpuMhz = clocks is null ? null : (int)(clocks.GraphicsClock.Frequency / 1000);
                     GpuMemMhz = clocks is null ? null : (int)(clocks.MemoryClock.Frequency / 1000);
+                    try
+                    {
+                        var ps = nvGpu?.PerformanceStatesInfo;
+                        var v = ps?.CurrentPerformanceState?.Voltages?.FirstOrDefault();
+                        GpuMv = v is null || v.CurrentVoltageInMicroVolt == 0 ? null : (int)(v.CurrentVoltageInMicroVolt / 1000);
+                    }
+                    catch { GpuMv = null; }
                 }
-                catch { nvFailed = true; GpuMhz = GpuMemMhz = null; }
+                catch { nvFailed = true; GpuMhz = GpuMemMhz = GpuMv = null; }
             }
-            else { GpuMhz = GpuMemMhz = null; }
+            else { GpuMhz = GpuMemMhz = GpuMv = null; }
 
             if (!ramRead)
             {

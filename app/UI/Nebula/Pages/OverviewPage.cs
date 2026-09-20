@@ -151,7 +151,7 @@ namespace GHelper.UI.Nebula.Pages
             if (NebulaSensors.HasIgpu && NebulaSensors.IgpuUse is >= 0)
                 y = Row(c, ColL, y, "iGPU · " + NebulaText.T("usage", "загрузка"), NebulaSensors.IgpuUse + " %" + (NebulaSensors.IgpuPower is > 0 ? " · " + NebulaSensors.IgpuPower + " " + NebulaText.Watt : ""), null, c.Theme.Accent);
 
-            c.Sparkline(c.R(ColL, y + 4, ColW, 40), NebulaSensors.CpuHistory.ToArray(), NebulaSensors.HistoryLength, c.Theme.Accent);
+            c.Sparkline(c.R(ColL, y + 4, ColW, Math.Max(16, Row2 - 14 - (y + 4))), NebulaSensors.CpuHistory.ToArray(), NebulaSensors.HistoryLength, c.Theme.Accent);
         }
 
         private void PaintGpu(NebulaCanvas c)
@@ -166,16 +166,19 @@ namespace GHelper.UI.Nebula.Pages
             y = Row(c, ColR, y, NebulaText.T("dGPU state", "Состояние dGPU"), state, null, c.Theme.Blue);
             var gmhz = NebulaSensors.GpuMhz;
             y = Row(c, ColR, y, NebulaText.T("Frequency", "Частота"), awake && gmhz is > 0 ? $"{gmhz:N0} MHz" : Dash, awake && gmhz is > 0 ? Math.Clamp(gmhz.Value / 3000f, 0, 1) : null, c.Theme.Blue);
+            var gmem = NebulaSensors.GpuMemMhz;
+            if (awake && gmem is > 0) y = Row(c, ColR, y, NebulaText.T("Memory clock", "Частота памяти"), $"{gmem:N0} MHz", null, c.Theme.Blue);
             var use = HardwareControl.gpuUsage;
             y = Row(c, ColR, y, NebulaText.T("Usage", "Использование"), awake && use is >= 0 ? use + " %" : Dash, awake && use is >= 0 ? use.Value / 100f : null, c.Theme.Blue);
             var t = HardwareControl.gpuTemp;
             y = Row(c, ColR, y, NebulaText.T("Temperature", "Температура"), t is > 0 ? Math.Round(t.Value) + " °C" : Dash, null, c.Theme.Blue);
             var p = NebulaSensors.DgpuPower;
             y = Row(c, ColR, y, NebulaText.T("Power", "Мощность"), p is > 0 ? Math.Round(p.Value) + " " + NebulaText.Watt : Dash, null, c.Theme.Blue);
+            if (awake && NebulaSensors.GpuMv is > 0) y = Row(c, ColR, y, NebulaText.T("Voltage", "Напряжение"), $"{NebulaSensors.GpuMv} mV", null, c.Theme.Blue);
             string mode = AppConfig.Is("gpu_auto") ? NebulaText.Optimized : AppConfig.Get("gpu_mode") switch { AsusACPI.GPUModeEco => NebulaText.Eco, AsusACPI.GPUModeUltimate => NebulaText.Ultimate, _ => NebulaText.Standard };
             y = Row(c, ColR, y, NebulaText.T("Mode", "Режим"), mode, null, c.Theme.Blue);
 
-            c.Sparkline(c.R(ColR, y + 4, ColW, 40), NebulaSensors.GpuHistory.ToArray(), NebulaSensors.HistoryLength, c.Theme.Blue);
+            c.Sparkline(c.R(ColR, y + 4, ColW, Math.Max(16, Row2 - 14 - (y + 4))), NebulaSensors.GpuHistory.ToArray(), NebulaSensors.HistoryLength, c.Theme.Blue);
         }
 
         private void PaintFans(NebulaCanvas c)
