@@ -293,9 +293,10 @@ namespace GHelper.UI.Nebula
                 float off = S(scroll);
 
                 var saved = g.Save();
-                g.SetClip(new RectangleF(S(RailW) + 1, S(130), ClientSize.Width, S(ViewBottom + 12) - S(130)));
-                // page grid: shift right of the rail and shrink so 1394 still fits the window
                 float ps = PageScale;
+                float clipTop = S(130) * ps, clipBottom = S(ViewBottom + 12) * ps;
+                g.SetClip(new RectangleF(S(RailW) + 1, clipTop, ClientSize.Width, clipBottom - clipTop));
+                // page grid: shift right of the rail and shrink so 1394 still fits the window
                 g.TranslateTransform(PageShift, -off);
                 g.ScaleTransform(ps, ps);
                 int before = canvas.Hits.Count;
@@ -307,7 +308,7 @@ namespace GHelper.UI.Nebula
                 {
                     var h = canvas.Hits[i];
                     var r = new RectangleF(h.rect.X * ps + PageShift, h.rect.Y * ps - off, h.rect.Width * ps, h.rect.Height * ps);
-                    if (r.Bottom < S(130) || r.Top > S(ViewBottom + 12)) r = RectangleF.Empty;
+                    if (r.Bottom < clipTop || r.Top > clipBottom) r = RectangleF.Empty;
                     canvas.Hits[i] = (r, h.id, h.tip);
                 }
 
