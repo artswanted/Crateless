@@ -117,7 +117,7 @@ namespace GHelper.UI.Nebula.Pages
             }
 
             // ---- panel & behaviour ----------------------------------------------------------------
-            int panelRows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 5 : 0);
+            int panelRows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 6 : 0);
             float panelH = Math.Max(361, 76 + panelRows * 85 + 20);
             c.Surface(651, 337, 403, panelH);
             c.Txt(NebulaText.T("Panel and behaviour", "Панель и поведение"), 671, 367, c.F(15, FontStyle.Bold), th.Text);
@@ -168,6 +168,18 @@ namespace GHelper.UI.Nebula.Pages
                 c.Toggle(996, y - 17, OledCare.IsIdleDim, "display:idledim");
                 y += 85;
 
+                c.Txt(NebulaText.T("Pixel shift", "Сдвиг пикселей"), 671, y, c.F(13), th.Text);
+                if (OledCare.PixelShiftUnsupported)
+                    c.Txt(NebulaText.T("Not supported on this system.", "На этой системе недоступно."), 671, y + 31, c.F(11), th.Faint);
+                else
+                {
+                    string sh = NebulaText.T("moves the image by up to 3 px every", "сдвигает изображение до 3 px каждые") + " " + OledCare.ShiftSeconds + " " + NebulaText.T("s", "с") + "  ⌄";
+                    c.Txt(sh, 671, y + 31, c.F(11, FontStyle.Bold), c.IsHover("display:shiftsec") ? th.Text : th.Accent);
+                    c.Hit(c.R(671, y + 14, 300, 26), "display:shiftsec");
+                }
+                c.Toggle(996, y - 17, OledCare.IsPixelShift, "display:pixelshift", !OledCare.PixelShiftUnsupported);
+                y += 85;
+
                 c.Txt(NebulaText.T("Windows dark theme", "Тёмная тема Windows"), 671, y, c.F(13), th.Text);
                 c.Txt(NebulaText.T("Less light on the panel, fewer static bright areas.", "Меньше света на панели и статичных ярких зон."), 671, y + 31, c.F(11), th.Faint);
                 c.Toggle(996, y - 17, darkTheme, "display:darktheme");
@@ -187,7 +199,7 @@ namespace GHelper.UI.Nebula.Pages
         {
             get
             {
-                int rows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 5 : 0);
+                int rows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 6 : 0);
                 return 337 + Math.Max(361, 76 + rows * 85 + 20) + 20;
             }
         }
@@ -230,6 +242,10 @@ namespace GHelper.UI.Nebula.Pages
                 case "display:transparency":
                     transparency = !transparency;
                     OledCare.SetTransparency(transparency);
+                    return true;
+                case "display:pixelshift": OledCare.SetPixelShift(!OledCare.IsPixelShift); return true;
+                case "display:shiftsec":
+                    Menu(form, at, new[] { 30, 60, 120, 300 }.Select(s => (s + " " + NebulaText.T("s", "с"), s == OledCare.ShiftSeconds, (Action)(() => AppConfig.Set("oled_shift_sec", s)))));
                     return true;
                 case "display:focusdim": OledCare.SetFocusDim(!OledCare.IsFocusDim); return true;
                 case "display:idledim": OledCare.SetIdleDim(!OledCare.IsIdleDim); return true;

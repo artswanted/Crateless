@@ -345,5 +345,9 @@
  "Dim when idle": "Затемнювати під час простою",
  "after": "через",
  "Windows dark theme": "Темна тема Windows",
- "Less light on the panel, fewer static bright areas.": "Менше світла на панелі та статичних яскравих зон."
+ "Less light on the panel, fewer static bright areas.": "Менше світла на панелі та статичних яскравих зон.",
+ "Pixel shift": "Зсув пікселів",
+ "Not supported on this system.": "На цій системі недоступно.",
+ "moves the image by up to 3 px every": "зсуває зображення до 3 px кожні",
+ "s": "с"
 }

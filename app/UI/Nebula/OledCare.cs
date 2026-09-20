@@ -63,6 +63,7 @@ namespace GHelper.UI.Nebula
             if (!AppConfig.IsOLED()) return;
             if (AppConfig.Is("oled_focus_dim")) SetFocusDim(true);
             if (AppConfig.Is("oled_idle_dim")) SetIdleDim(true);
+            if (AppConfig.Is("oled_pixel_shift")) SetPixelShift(true);
         }
 
         // ---- focus mode (dim inactive windows) ------------------------------------------------------
@@ -163,6 +164,70 @@ namespace GHelper.UI.Nebula
                 Program.settingsForm?.VisualiseBrightness();
                 Logger.WriteLine("OLED idle dim: restored " + savedBrightness);
             }
+        }
+
+        // ---- pixel shift (Magnification API full-screen transform) --------------------------------
+        [DllImport("magnification.dll")] private static extern bool MagInitialize();
+        [DllImport("magnification.dll")] private static extern bool MagUninitialize();
+        [DllImport("magnification.dll")] private static extern bool MagSetFullscreenTransform(float magLevel, int xOffset, int yOffset);
+
+        private static System.Windows.Forms.Timer? shiftTimer;
+        private static bool magReady, magFailed;
+        private static int shiftStep;
+        private static long lastShift;
+        // 3 px square walk; offsets must be >= 0 for the API, so the image moves up/left by 0..3 px
+        private static readonly (int x, int y)[] ShiftPath = { (0, 0), (1, 0), (2, 0), (3, 0), (3, 1), (3, 2), (3, 3), (2, 3), (1, 3), (0, 3), (0, 2), (0, 1), (1, 1), (2, 2), (2, 1), (1, 2) };
+
+        public static bool IsPixelShift => shiftTimer is { Enabled: true };
+        public static bool PixelShiftUnsupported => magFailed;
+        public static int ShiftSeconds => Math.Clamp(AppConfig.Get("oled_shift_sec", 60), 10, 600);
+
+        public static void SetPixelShift(bool on)
+        {
+            AppConfig.Set("oled_pixel_shift", on ? 1 : 0);
+            if (on)
+            {
+                if (!magReady)
+                {
+                    try { magReady = MagInitialize(); } catch (Exception ex) { Logger.WriteLine("Magnification: " + ex.Message); magReady = false; }
+                    if (!magReady) { magFailed = true; AppConfig.Set("oled_pixel_shift", 0); return; }
+                }
+                shiftTimer ??= new System.Windows.Forms.Timer { Interval = 1000 };
+                shiftTimer.Tick -= ShiftTick;
+                shiftTimer.Tick += ShiftTick;
+                lastShift = Environment.TickCount64;
+                shiftTimer.Start();
+                Logger.WriteLine("OLED pixel shift: on, every " + ShiftSeconds + " s");
+            }
+            else
+            {
+                shiftTimer?.Stop();
+                if (magReady)
+                {
+                    try { MagSetFullscreenTransform(1.0f, 0, 0); MagUninitialize(); } catch { }
+                    magReady = false;
+                }
+                shiftStep = 0;
+                Logger.WriteLine("OLED pixel shift: off");
+            }
+        }
+
+        private static void ShiftTick(object? sender, EventArgs e)
+        {
+            if (Environment.TickCount64 - lastShift < ShiftSeconds * 1000L) return;
+            lastShift = Environment.TickCount64;
+            shiftStep = (shiftStep + 1) % ShiftPath.Length;
+            var (x, y) = ShiftPath[shiftStep];
+            try
+            {
+                if (!MagSetFullscreenTransform(1.0f, x, y))
+                {
+                    Logger.WriteLine("OLED pixel shift: transform refused, disabling");
+                    magFailed = true;
+                    SetPixelShift(false);
+                }
+            }
+            catch (Exception ex) { Logger.WriteLine("OLED pixel shift: " + ex.Message); magFailed = true; SetPixelShift(false); }
         }
 
         // ---- dark theme ----------------------------------------------------------------------------
