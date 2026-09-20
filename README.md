@@ -40,8 +40,12 @@ compact fly-out from the tray. Nothing else changes.
   clock, Dynamic Boost, temperature target, TGP. List of processes holding the dGPU.
 - Refresh rate with auto switching on battery, overdrive, Mini-LED, GameVisual modes and
   gamut, OLED flicker-free dimming.
+- OLED care: taskbar auto-hide and transparency, focus mode (dims everything but the
+  active window), dim when idle, window pixel shift, Windows dark theme switch.
+- Connected ASUS mice, keyboards and headsets: DPI, polling, lighting, sidetone, noise
+  reduction, ANC, power settings inline; bindings and per-key RGB in the device window.
 - Charge limit, one-time full charge, battery health.
-- Keyboard lighting, AniMe Matrix and Slash, external ASUS mice, keyboards and headsets.
+- Keyboard lighting, AniMe Matrix and Slash.
 - Hotkeys and the M-keys, Fn lock.
 - In-game overlay, BIOS and driver update check against the ASUS site.
 
