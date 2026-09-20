@@ -17,7 +17,34 @@ namespace GHelper.UI.Nebula
             }
         }
 
-        public static string T(string en, string ru) => Ru ? ru : en;
+        // Translations live in Resources/Nebula/strings.<culture>.json (English text is the key).
+        // Lookup order: exact culture (pt-BR), language (pt), then the inline RU for ru/uk/be, then English.
+        private static readonly Lazy<Dictionary<string, string>?> table = new(LoadTable);
+
+        private static Dictionary<string, string>? LoadTable()
+        {
+            var culture = CultureInfo.CurrentUICulture;
+            foreach (var name in new[] { culture.Name, culture.TwoLetterISOLanguageName })
+            {
+                if (string.IsNullOrEmpty(name) || name == "en") continue;
+                try
+                {
+                    using var stream = typeof(NebulaText).Assembly.GetManifestResourceStream("Nebula.strings." + name + ".json");
+                    if (stream is null) continue;
+                    var dict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(stream);
+                    if (dict is { Count: > 0 }) return dict;
+                }
+                catch (Exception ex) { Logger.WriteLine("Nebula strings " + name + ": " + ex.Message); }
+            }
+            return null;
+        }
+
+        public static string T(string en, string ru)
+        {
+            var t = table.Value;
+            if (t is not null && t.TryGetValue(en, out var s) && s.Length > 0) return s;
+            return Ru ? ru : en;
+        }
 
         public static string ControlCenter => T("Control Center", "Центр управления");
         public static string Tagline => T("Your laptop. Your rules.", "Твой ноутбук. Твои правила.");

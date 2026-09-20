@@ -9,8 +9,9 @@ want a signed build that thousands of people already run, use G-Helper. Crateles
 people who want the same backend with a different front.
 
 Status: early. Works on the author's machine (Zephyrus G16 GA605WI). Release builds are
-not code-signed, so SmartScreen will complain on first run. Translations for the new UI
-are incomplete, Russian and English are there.
+not code-signed, so SmartScreen will complain on first run. The new UI ships in English,
+Russian and Ukrainian; other languages fall back to English for the new screens. Translations
+are plain JSON files in `app/Resources/Nebula/strings.<culture>.json`, English text is the key.
 
 Download: [Releases](https://github.com/artswanted/Crateless/releases). `Crateless.exe`
 needs the .NET 10 Desktop Runtime, `Crateless-standalone.exe` does not.
