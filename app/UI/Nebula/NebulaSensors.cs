@@ -17,6 +17,10 @@ namespace GHelper.UI.Nebula
         public static DateTime LastRead = DateTime.MinValue;
 
         public static int? CpuMhz;
+        public static int? GpuMhz, GpuMemMhz;          // dGPU current clocks (NVAPI), only while awake
+        public static int? RamMhz;                     // configured memory speed (WMI, read once)
+        private static NvAPIWrapper.GPU.PhysicalGPU? nvGpu;
+        private static bool nvFailed, ramRead;
         public static (long usedGb, long totalGb)? Disk;
 
         private static System.Diagnostics.PerformanceCounter? cpuPerf;
@@ -77,6 +81,35 @@ namespace GHelper.UI.Nebula
                     CpuMhz = perf > 0 && baseMhz > 0 ? (int)Math.Round(baseMhz * perf / 100f) : null;
                 }
                 catch { cpuPerfFailed = true; CpuMhz = null; }
+            }
+
+            // dGPU clocks through NVAPI; skipped while the GPU sleeps so we never wake it
+            if (!nvFailed && HardwareControl.gpuTemp is > 0 && HardwareControl.GpuControl?.IsNvidia == true)
+            {
+                try
+                {
+                    nvGpu ??= NvAPIWrapper.GPU.PhysicalGPU.GetPhysicalGPUs().FirstOrDefault(g => g.SystemType == NvAPIWrapper.Native.GPU.SystemType.Laptop);
+                    var clocks = nvGpu?.CurrentClockFrequencies;
+                    GpuMhz = clocks is null ? null : (int)(clocks.GraphicsClock.Frequency / 1000);
+                    GpuMemMhz = clocks is null ? null : (int)(clocks.MemoryClock.Frequency / 1000);
+                }
+                catch { nvFailed = true; GpuMhz = GpuMemMhz = null; }
+            }
+            else { GpuMhz = GpuMemMhz = null; }
+
+            if (!ramRead)
+            {
+                ramRead = true;
+                try
+                {
+                    using var searcher = new System.Management.ManagementObjectSearcher("SELECT ConfiguredClockSpeed, Speed FROM Win32_PhysicalMemory");
+                    foreach (System.Management.ManagementObject mo in searcher.Get())
+                    {
+                        int v = Convert.ToInt32(mo["ConfiguredClockSpeed"] ?? mo["Speed"] ?? 0);
+                        if (v > 0) { RamMhz = v; break; }
+                    }
+                }
+                catch { RamMhz = null; }
             }
 
             // system drive, every 30 s

@@ -164,13 +164,14 @@ namespace GHelper.UI.Nebula.Pages
             bool awake = HardwareControl.gpuTemp is > 0;
             string state = eco ? NebulaText.T("off (Eco)", "выкл (Eco)") : awake ? NebulaText.T("active", "активна") : NebulaText.Sleeping;
             y = Row(c, ColR, y, NebulaText.T("dGPU state", "Состояние dGPU"), state, null, c.Theme.Blue);
+            var gmhz = NebulaSensors.GpuMhz;
+            y = Row(c, ColR, y, NebulaText.T("Frequency", "Частота"), awake && gmhz is > 0 ? $"{gmhz:N0} MHz" : Dash, awake && gmhz is > 0 ? Math.Clamp(gmhz.Value / 3000f, 0, 1) : null, c.Theme.Blue);
             var use = HardwareControl.gpuUsage;
             y = Row(c, ColR, y, NebulaText.T("Usage", "Использование"), awake && use is >= 0 ? use + " %" : Dash, awake && use is >= 0 ? use.Value / 100f : null, c.Theme.Blue);
             var t = HardwareControl.gpuTemp;
             y = Row(c, ColR, y, NebulaText.T("Temperature", "Температура"), t is > 0 ? Math.Round(t.Value) + " °C" : Dash, null, c.Theme.Blue);
             var p = NebulaSensors.DgpuPower;
             y = Row(c, ColR, y, NebulaText.T("Power", "Мощность"), p is > 0 ? Math.Round(p.Value) + " " + NebulaText.Watt : Dash, null, c.Theme.Blue);
-            int gpuBase = AppConfig.Get("gpu_base", -1);
             string mode = AppConfig.Is("gpu_auto") ? NebulaText.Optimized : AppConfig.Get("gpu_mode") switch { AsusACPI.GPUModeEco => NebulaText.Eco, AsusACPI.GPUModeUltimate => NebulaText.Ultimate, _ => NebulaText.Standard };
             y = Row(c, ColR, y, NebulaText.T("Mode", "Режим"), mode, null, c.Theme.Blue);
 
@@ -220,6 +221,8 @@ namespace GHelper.UI.Nebula.Pages
                 y = Row(c, ColR, y, NebulaText.T("RAM", "ОЗУ"), $"{used.Value / 1024.0:0.0} / {Math.Round(totalGb)} {NebulaText.Gb}", pct.Value / 100f, c.Theme.Blue);
             }
             else y = Row(c, ColR, y, NebulaText.T("RAM", "ОЗУ"), Dash, null, c.Theme.Blue);
+            if (NebulaSensors.RamMhz is > 0)
+                y = Row(c, ColR, y, NebulaText.T("Memory speed", "Частота памяти"), $"{NebulaSensors.RamMhz:N0} MT/s", null, c.Theme.Blue);
 
             if (NebulaSensors.Disk is { } d && d.totalGb > 0)
                 y = Row(c, ColR, y, NebulaText.T("System drive", "Накопитель"), $"{d.usedGb:N0} / {d.totalGb:N0} {NebulaText.Gb}", d.usedGb / (float)d.totalGb, c.Theme.Blue);
