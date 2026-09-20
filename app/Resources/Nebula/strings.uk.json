@@ -350,5 +350,22 @@
  "Not supported on this system.": "На цій системі недоступно.",
  "s": "с",
  "Test": "Перевірити",
- "nudges windows by up to 2 px every": "зсуває вікна до 2 px кожні"
+ "nudges windows by up to 2 px every": "зсуває вікна до 2 px кожні",
+ "Colour modes are below, in GameVisual.": "Колірні режими нижче, у GameVisual.",
+ "Colour presets of the panel, applied through ASUS Splendid. Fn+V cycles them.": "Колірні пресети панелі через ASUS Splendid. Fn+V перемикає по колу.",
+ "Colour space": "Колірний простір",
+ "Colour temperature": "Колірна температура",
+ "Accurate colours for photos and the web.": "Точні кольори для фото та сайтів.",
+ "Sharper, faster response for racing games.": "Різкіше та швидше, для перегонів.",
+ "Brighter, more contrast and saturation.": "Яскравіше, контрастніше, насиченіше.",
+ "Detail and colour for strategy and RPG.": "Деталі та колір для стратегій і RPG.",
+ "Lifts dark scenes so enemies stand out.": "Освітлює темні сцени, щоб бачити ворогів.",
+ "Contrast and saturation for video.": "Контраст і насиченість для відео.",
+ "Maximum saturation and brightness.": "Максимальна насиченість і яскравість.",
+ "Less blue light for long sessions.": "Менше синього світла для довгої роботи.",
+ "Black and white, paper-like.": "Чорно-білий режим, як папір.",
+ "Button bindings, lighting zones and DPI colours are in the device window.": "Прив'язки кнопок, зони підсвітки та кольори DPI — у вікні пристрою.",
+ "Equalizer bands and microphone type are in the device window.": "Смуги еквалайзера та тип мікрофона — у вікні пристрою.",
+ "Key bindings, per-key lighting and profiles are in the device window.": "Прив'язки клавіш, попіксельна підсвітка та профілі — у вікні пристрою.",
+ "Follow the laptop keyboard colour": "Повторювати колір клавіатури ноутбука"
 }

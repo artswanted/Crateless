@@ -173,7 +173,7 @@ namespace GHelper.UI.Nebula.Pages
                     AppConfig.Set("nebula_asus_render", AppConfig.Is("nebula_asus_render") ? 0 : 1);
                     NebulaAssets.ResetHero();
                     return true;
-                case "settings:extra": form.ShowPage("extra"); return true;
+                case "settings:extra": Program.settingsForm.ExtraWindow(); return true;
                 case "settings:quit": Program.settingsForm.QuitApp(); return true;
             }
             return false;

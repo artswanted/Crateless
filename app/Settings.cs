@@ -1170,6 +1170,9 @@ namespace GHelper
         /// <summary>Opens/closes the AniMe Matrix / Slash window (Nebula shell bridge).</summary>
         public void MatrixToggle() => ButtonMatrix_Click(null, EventArgs.Empty);
 
+        /// <summary>Opens the classic Extra window regardless of the active shell.</summary>
+        public void ExtraWindow() => ButtonKeyboard_Click(null, EventArgs.Empty);
+
         /// <summary>Opens/closes the Extra window (used by the Nebula shell as a V1 bridge).</summary>
         public void ExtraToggle()
         {

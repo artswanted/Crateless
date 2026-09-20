@@ -138,25 +138,44 @@ namespace GHelper.UI.Nebula.Pages
 
             if (status.Length > 0) { c.Txt(status, 544, y + 12, c.F(11), th.Warning); y += 26; }
 
-            c.Txt(NebulaText.T("Bindings, per-key lighting and the equalizer are in the device window.", "Привязки, попиксельная подсветка и эквалайзер — в окне устройства."), 544, y + 26, c.F(11), th.Faint);
+            string more = d.DeviceType() switch
+            {
+                PeripheralType.Mouse => NebulaText.T("Button bindings, lighting zones and DPI colours are in the device window.", "Привязки кнопок, зоны подсветки и цвета DPI — в окне устройства."),
+                PeripheralType.Headset => NebulaText.T("Equalizer bands and microphone type are in the device window.", "Полосы эквалайзера и тип микрофона — в окне устройства."),
+                _ => NebulaText.T("Key bindings, per-key lighting and profiles are in the device window.", "Привязки клавиш, попиксельная подсветка и профили — в окне устройства."),
+            };
+            c.Txt(more, 544, y + 26, c.F(11), th.Faint);
             c.Button(544, y + 40, 490, 36, NebulaText.T("Open device window", "Открыть окно устройства"), "dev:open", primary: false, enabled: d.IsDeviceReady);
             y += 96;
 
-            y = PaintAuraSync(c, y);
+            y = PaintAuraSync(c, y, d.DeviceType());
             return y;
         }
 
-        private float PaintAuraSync(NebulaCanvas c, float sy)
+        private float PaintAuraSync(NebulaCanvas c, float sy, PeripheralType? only = null)
         {
             var th = c.Theme;
             c.Txt("Aura Sync", 544, sy, c.F(13, FontStyle.Bold), th.Text);
-            c.Txt(NebulaText.T("Mice follow the keyboard colour", "Мыши повторяют цвет клавиатуры"), 544, sy + 30, c.F(12), th.Muted);
-            c.Toggle(996, sy + 13, PeripheralsProvider.IsAuraSync, "dev:sync:mouse");
-            c.Txt(NebulaText.T("External keyboards", "Внешние клавиатуры"), 544, sy + 60, c.F(12), th.Muted);
-            c.Toggle(996, sy + 43, PeripheralsProvider.IsKeyboardAuraSync, "dev:sync:kb");
-            c.Txt(NebulaText.T("Headsets", "Гарнитуры"), 544, sy + 90, c.F(12), th.Muted);
-            c.Toggle(996, sy + 73, PeripheralsProvider.IsHeadsetAuraSync, "dev:sync:hs");
-            return sy + 110;
+            float y = sy + 30;
+            if (only is null)
+            {
+                c.Txt(NebulaText.T("Mice follow the keyboard colour", "Мыши повторяют цвет клавиатуры"), 544, y, c.F(12), th.Muted);
+                c.Toggle(996, y - 17, PeripheralsProvider.IsAuraSync, "dev:sync:mouse"); y += 30;
+                c.Txt(NebulaText.T("External keyboards", "Внешние клавиатуры"), 544, y, c.F(12), th.Muted);
+                c.Toggle(996, y - 17, PeripheralsProvider.IsKeyboardAuraSync, "dev:sync:kb"); y += 30;
+                c.Txt(NebulaText.T("Headsets", "Гарнитуры"), 544, y, c.F(12), th.Muted);
+                c.Toggle(996, y - 17, PeripheralsProvider.IsHeadsetAuraSync, "dev:sync:hs"); y += 30;
+                return y;
+            }
+            string label = NebulaText.T("Follow the laptop keyboard colour", "Повторять цвет клавиатуры ноутбука");
+            c.Txt(label, 544, y, c.F(12), th.Muted);
+            switch (only)
+            {
+                case PeripheralType.Mouse: c.Toggle(996, y - 17, PeripheralsProvider.IsAuraSync, "dev:sync:mouse"); break;
+                case PeripheralType.Keyboard: c.Toggle(996, y - 17, PeripheralsProvider.IsKeyboardAuraSync, "dev:sync:kb"); break;
+                default: c.Toggle(996, y - 17, PeripheralsProvider.IsHeadsetAuraSync, "dev:sync:hs"); break;
+            }
+            return y + 30;
         }
 
         // ---- mouse -----------------------------------------------------------------------------------

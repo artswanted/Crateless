@@ -176,7 +176,7 @@ namespace GHelper.UI.Nebula.Pages
                     return true;
                 case "keys:fnlock": InputDispatcher.ToggleFnLock(); return true;
                 case "keys:arrowlock": InputDispatcher.ToggleArrowLock(); return true;
-                case "keys:extra": form.ShowPage("extra"); return true;
+                case "keys:extra": Program.settingsForm.ExtraWindow(); return true;
             }
             return false;
         }

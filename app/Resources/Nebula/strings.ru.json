@@ -344,5 +344,22 @@
  "Not supported on this system.": "На этой системе недоступно.",
  "s": "с",
  "Test": "Проверить",
- "nudges windows by up to 2 px every": "сдвигает окна до 2 px каждые"
+ "nudges windows by up to 2 px every": "сдвигает окна до 2 px каждые",
+ "Colour modes are below, in GameVisual.": "Цветовые режимы ниже, в GameVisual.",
+ "Colour presets of the panel, applied through ASUS Splendid. Fn+V cycles them.": "Цветовые пресеты панели через ASUS Splendid. Fn+V переключает по кругу.",
+ "Colour space": "Цветовое пространство",
+ "Colour temperature": "Цветовая температура",
+ "Accurate colours for photos and the web.": "Точные цвета для фото и сайтов.",
+ "Sharper, faster response for racing games.": "Резче и быстрее, для гонок.",
+ "Brighter, more contrast and saturation.": "Ярче, контрастнее, насыщеннее.",
+ "Detail and colour for strategy and RPG.": "Детали и цвет для стратегий и RPG.",
+ "Lifts dark scenes so enemies stand out.": "Осветляет тёмные сцены, чтобы видеть врагов.",
+ "Contrast and saturation for video.": "Контраст и насыщенность для видео.",
+ "Maximum saturation and brightness.": "Максимальная насыщенность и яркость.",
+ "Less blue light for long sessions.": "Меньше синего света для долгой работы.",
+ "Black and white, paper-like.": "Чёрно-белый режим, как бумага.",
+ "Button bindings, lighting zones and DPI colours are in the device window.": "Привязки кнопок, зоны подсветки и цвета DPI — в окне устройства.",
+ "Equalizer bands and microphone type are in the device window.": "Полосы эквалайзера и тип микрофона — в окне устройства.",
+ "Key bindings, per-key lighting and profiles are in the device window.": "Привязки клавиш, попиксельная подсветка и профили — в окне устройства.",
+ "Follow the laptop keyboard colour": "Повторять цвет клавиатуры ноутбука"
 }

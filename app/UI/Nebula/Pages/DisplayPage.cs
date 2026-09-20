@@ -79,31 +79,9 @@ namespace GHelper.UI.Nebula.Pages
             }
 
             bool visual = false;
-            try { visual = VisualControl.IsEnabled() && VisualControl.GetVisualModes().Count > 0; } catch { }
-            if (visual)
-            {
-                string mode = "—";
-                try
-                {
-                    var modes = VisualControl.GetVisualModes();
-                    var cur = (SplendidCommand)AppConfig.Get("visual", (int)VisualControl.GetDefaultVisualMode());
-                    if (modes.TryGetValue(cur, out var n)) mode = n;
-                }
-                catch { }
-                c.ValueRow(256, row, 359, NebulaText.T("Visual mode", "Визуальный режим"), mode, "display:visual");
-                row += 60;
-
-                Dictionary<SplendidGamut, string>? gamuts = null;
-                try { gamuts = VisualControl.GetGamutModes(); } catch { }
-                if (gamuts is { Count: > 0 })
-                {
-                    string g = "—";
-                    var cur = (SplendidGamut)AppConfig.Get("gamut", (int)VisualControl.GetDefaultGamut());
-                    if (gamuts.TryGetValue(cur, out var n)) g = n.Replace("Gamut:", "").Trim();
-                    c.ValueRow(256, row, 359, NebulaText.T("Color gamut", "Цветовой охват"), g, "display:gamut");
-                    row += 60;
-                }
-            }
+            try { visual = VisualControl.GetVisualModes().Count > 0; } catch { }
+            c.Txt(NebulaText.T("Colour modes are below, in GameVisual.", "Цветовые режимы ниже, в GameVisual."), 256, row, c.F(11), th.Faint);
+            row += 40;
 
             if (overdriveSupported)
             {
@@ -198,8 +176,78 @@ namespace GHelper.UI.Nebula.Pages
             c.Txt(NebulaText.T("Open  ↗", "Открыть  ↗"), 1034, y, link, c.IsHover("display:windows") ? th.Text : th.Accent, StringAlignment.Far);
             c.Hit(c.R(671, y - 20, 363, 30), "display:windows");
 
+            PaintGameVisual(c, visual);
+
             if (external)
                 c.Txt(NebulaText.T("External displays are detected separately; these settings apply to the built-in panel.", "Внешние экраны определяются отдельно; настройки относятся к встроенной панели."), 671, 653, c.F(11), th.Faint);
+        }
+
+        private static readonly (SplendidCommand cmd, string icon, string en, string ru)[] Tiles =
+        {
+            (SplendidCommand.Default, "overview", "Accurate colours for photos and the web.", "Точные цвета для фото и сайтов."),
+            (SplendidCommand.Racing, "power", "Sharper, faster response for racing games.", "Резче и быстрее, для гонок."),
+            (SplendidCommand.Scenery, "sun", "Brighter, more contrast and saturation.", "Ярче, контрастнее, насыщеннее."),
+            (SplendidCommand.RTS, "chart", "Detail and colour for strategy and RPG.", "Детали и цвет для стратегий и RPG."),
+            (SplendidCommand.FPS, "search", "Lifts dark scenes so enemies stand out.", "Осветляет тёмные сцены, чтобы видеть врагов."),
+            (SplendidCommand.Cinema, "display", "Contrast and saturation for video.", "Контраст и насыщенность для видео."),
+            (SplendidCommand.Vivid, "light", "Maximum saturation and brightness.", "Максимальная насыщенность и яркость."),
+            (SplendidCommand.Eyecare, "heart", "Less blue light for long sessions.", "Меньше синего света для долгой работы."),
+            (SplendidCommand.EReading, "moon", "Black and white, paper-like.", "Чёрно-белый режим, как бумага."),
+        };
+
+        private float gvBottom = 698;
+
+        private void PaintGameVisual(NebulaCanvas c, bool visual)
+        {
+            var th = c.Theme;
+            int panelRows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 6 : 0);
+            float panelH = Math.Max(361, 76 + panelRows * 85 + 20);
+            float top = 337 + panelH + 16;
+            if (!visual) { gvBottom = top; return; }
+
+            var modes = VisualControl.GetVisualModes();
+            bool enabled = VisualControl.IsEnabled();
+            var cur = (SplendidCommand)AppConfig.Get("visual", (int)VisualControl.GetDefaultVisualMode());
+            int temp = AppConfig.Get("color_temp", VisualControl.DefaultColorTemp);
+            var tiles = Tiles.Where(t => modes.ContainsKey(t.cmd)).ToList();
+            int rows = (tiles.Count + 2) / 3;
+            float h = 110 + rows * 104 + 110;
+            c.Surface(236, top, 818, h);
+            c.Txt("GameVisual", 256, top + 30, c.F(15, FontStyle.Bold), th.Text);
+            c.Txt(NebulaText.T("Colour presets of the panel, applied through ASUS Splendid. Fn+V cycles them.",
+                               "Цветовые пресеты панели через ASUS Splendid. Fn+V переключает по кругу."), 256, top + 51, c.F(11), th.Muted);
+            c.Toggle(996, top + 18, enabled && cur != SplendidCommand.Disabled, "display:gv");
+
+            float y = top + 78;
+            for (int i = 0; i < tiles.Count; i++)
+            {
+                var t = tiles[i];
+                float x = 256 + (i % 3) * 266;
+                float ty = y + (i / 3) * 104;
+                bool active = enabled && cur == t.cmd;
+                var r = c.R(x, ty, 254, 92);
+                c.Card(r, 12, active ? th.AccentBg : c.IsHover("display:gv:" + (int)t.cmd) ? th.Raised : th.Card, active ? th.Accent : th.Line);
+                c.IconAt(t.icon, x + 16, ty + 16, 24, active);
+                c.Txt(modes[t.cmd], x + 50, ty + 34, c.F(14, FontStyle.Bold), active ? th.Accent : th.Text);
+                c.Txt(NebulaText.T(t.en, t.ru), x + 16, ty + 66, c.F(10), th.Muted);
+                c.Hit(r, "display:gv:" + (int)t.cmd);
+            }
+            y += rows * 104 + 10;
+
+            Dictionary<SplendidGamut, string>? gamuts = null;
+            try { gamuts = VisualControl.GetGamutModes(); } catch { }
+            if (gamuts is { Count: > 0 })
+            {
+                string g = "—";
+                var cg = (SplendidGamut)AppConfig.Get("gamut", (int)VisualControl.GetDefaultGamut());
+                if (gamuts.TryGetValue(cg, out var n)) g = n.Replace("Gamut:", "").Trim();
+                c.ValueRow(256, y + 20, 778, NebulaText.T("Colour space", "Цветовое пространство"), g, "display:gamut");
+                y += 46;
+            }
+            var temps = VisualControl.GetTemperatures();
+            string tn = temps.TryGetValue(temp, out var tname) ? tname : temp.ToString();
+            c.ValueRow(256, y + 20, 778, NebulaText.T("Colour temperature", "Цветовая температура"), tn, "display:temp", enabled);
+            gvBottom = top + h;
         }
 
         public override float ContentHeight
@@ -207,12 +255,19 @@ namespace GHelper.UI.Nebula.Pages
             get
             {
                 int rows = 2 + (AppConfig.Get("miniled", -1) >= 0 ? 1 : 0) + (elmb >= 0 ? 1 : 0) + (oled ? 6 : 0);
-                return 337 + Math.Max(361, 76 + rows * 85 + 20) + 20;
+                return Math.Max(337 + Math.Max(361, 76 + rows * 85 + 20), gvBottom) + 20;
             }
         }
 
         public override bool Click(string id, Point at, NebulaForm form)
         {
+            if (id.StartsWith("display:gv:") && int.TryParse(id[11..], out int gv))
+            {
+                VisualControl.SetRegStatus(1);
+                VisualControl.SetVisual((SplendidCommand)gv, AppConfig.Get("color_temp", VisualControl.DefaultColorTemp));
+                Program.settingsForm.InitVisual();
+                return true;
+            }
             switch (id)
             {
                 case "display:auto":
@@ -269,6 +324,25 @@ namespace GHelper.UI.Nebula.Pages
                 case "display:windows":
                     try { Process.Start(new ProcessStartInfo("ms-settings:display") { UseShellExecute = true }); } catch { }
                     return true;
+                case "display:gv":
+                {
+                    bool on = VisualControl.IsEnabled() && (SplendidCommand)AppConfig.Get("visual", (int)VisualControl.GetDefaultVisualMode()) != SplendidCommand.Disabled;
+                    if (on) VisualControl.SetVisual(SplendidCommand.Disabled, AppConfig.Get("color_temp", VisualControl.DefaultColorTemp));
+                    else { VisualControl.SetRegStatus(1); VisualControl.SetVisual(VisualControl.GetDefaultVisualMode(), AppConfig.Get("color_temp", VisualControl.DefaultColorTemp)); }
+                    Program.settingsForm.InitVisual();
+                    return true;
+                }
+                case "display:temp":
+                {
+                    var cur = (SplendidCommand)AppConfig.Get("visual", (int)VisualControl.GetDefaultVisualMode());
+                    int temp = AppConfig.Get("color_temp", VisualControl.DefaultColorTemp);
+                    Menu(form, at, VisualControl.GetTemperatures().Select(t => (t.Value, t.Key == temp, (Action)(() =>
+                    {
+                        VisualControl.SetVisual(cur, t.Key);
+                        Program.settingsForm.InitVisual();
+                    }))));
+                    return true;
+                }
                 case "display:visual":
                 {
                     var modes = VisualControl.GetVisualModes();

@@ -46,17 +46,29 @@ namespace GHelper.UI.Nebula.Pages
             {
                 var dst = new RectangleF(box.X + (box.Width - top.Width) / 2, box.Y + (box.Height - top.Height) / 2, top.Width, top.Height);
                 c.G.DrawImage(top, dst);
-                // keyboard glow layer follows the chosen colour (white when the effect has no fixed colour)
+                // keyboard glow: a feathered colour wash over the keyboard area of the top-down render
                 bool colourless = mode is AuraMode.AuraRainbow or AuraMode.AuraColorCycle or AuraMode.HEATMAP or AuraMode.GPUMODE or AuraMode.AMBIENT or AuraMode.BATTERY or AuraMode.AUDIO or AuraMode.AUDIOPULSE;
-                var glow = NebulaAssets.TintedGlow(colourless ? th.Accent : Aura.Color1, topW);
-                if (glow is not null && InputDispatcher.GetBacklight() > 0)
+                int levels = Math.Max(1, AppConfig.Get("max_brightness", 3));
+                int level = Math.Clamp(InputDispatcher.GetBacklight(), 0, levels);
+                if (level > 0)
                 {
-                    int levels = Math.Max(1, AppConfig.Get("max_brightness", 3));
-                    float alpha = 0.35f + 0.65f * Math.Clamp(InputDispatcher.GetBacklight(), 0, levels) / levels;
-                    var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = alpha };
-                    using var ia = new System.Drawing.Imaging.ImageAttributes();
-                    ia.SetColorMatrix(cm);
-                    c.G.DrawImage(glow, Rectangle.Round(dst), 0, 0, glow.Width, glow.Height, GraphicsUnit.Pixel, ia);
+                    var col = colourless ? th.Accent : Aura.Color1;
+                    int alpha = (int)(70 + 110 * level / (float)levels);
+                    // keyboard region of hero-laptop-top.png, as fractions of the image
+                    var kb = new RectangleF(dst.X + dst.Width * 0.235f, dst.Y + dst.Height * 0.505f, dst.Width * 0.53f, dst.Height * 0.205f);
+                    var feather = new RectangleF(kb.X - kb.Width * 0.12f, kb.Y - kb.Height * 0.35f, kb.Width * 1.24f, kb.Height * 1.7f);
+                    using var path = new GraphicsPath();
+                    path.AddEllipse(feather);
+                    using var pgb = new PathGradientBrush(path)
+                    {
+                        CenterColor = Color.FromArgb(alpha, col),
+                        SurroundColors = new[] { Color.FromArgb(0, col) },
+                        CenterPoint = new PointF(kb.X + kb.Width / 2, kb.Y + kb.Height / 2),
+                    };
+                    var saved2 = c.G.Clip;
+                    c.G.SetClip(dst);
+                    c.G.FillEllipse(pgb, feather);
+                    c.G.Clip = saved2;
                 }
             }
             c.Pill(132, 806, modeName.ToUpperInvariant(), th.AccentBg, th.Accent);
