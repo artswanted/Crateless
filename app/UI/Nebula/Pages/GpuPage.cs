@@ -33,6 +33,14 @@ namespace GHelper.UI.Nebula.Pages
         private bool procsLoading;
         private bool procsSupported;
 
+        // iGPU memory (AMD VRAM options or Ally APU memory)
+        private int[] vramOptions = Array.Empty<int>();
+        private int vramUnitMb;
+        private bool apuMemMode;                 // Ally: index-based APU_MEM
+        private static readonly int[] ApuMemGb = { 0, 2, 3, 4, 5, 7, 8, 9, 6 };
+        private int vramCurrent = -1, vramDraft = -1;
+        private bool vramLoaded;
+
         private bool nvidia;
         private bool eco;
         private int gpuPowerBase;
@@ -42,6 +50,7 @@ namespace GHelper.UI.Nebula.Pages
         {
             if (opened || tick++ % 5 == 0) LoadProcs();
             if (!opened) return;
+            if (!vramLoaded) LoadVram();
             nvidia = false;
             eco = false;
             try { eco = Program.acpi.DeviceGet(AsusACPI.GPUEco) == 1; } catch { }
@@ -96,6 +105,42 @@ namespace GHelper.UI.Nebula.Pages
                 try { Program.nebulaForm?.BeginInvoke(Program.nebulaForm.Invalidate); } catch { }
             });
         }
+
+        private void LoadVram()
+        {
+            vramLoaded = true;
+            Task.Run(() =>
+            {
+                try
+                {
+                    if (PawnIO.CpuInfo.IsAMD) vramOptions = Program.acpi.GetVramOptions(out vramUnitMb);
+                    if (vramOptions.Length > 0)
+                    {
+                        int cur = Program.acpi.GetVramMem();
+                        if (cur == 0) cur = AppConfig.Get("vram_mem", 0);
+                        vramCurrent = Math.Max(0, Array.IndexOf(vramOptions, cur));
+                    }
+                    else if (AppConfig.IsAlly())
+                    {
+                        int apu = Program.acpi.GetAPUMem();
+                        if (apu >= 0) { apuMemMode = true; vramCurrent = apu; }
+                    }
+                    vramDraft = vramCurrent;
+                }
+                catch (Exception ex) { Logger.WriteLine("iGPU memory: " + ex.Message); }
+                try { Program.nebulaForm?.BeginInvoke(Program.nebulaForm.Invalidate); } catch { }
+            });
+        }
+
+        private bool VramSupported => vramCurrent >= 0 && (vramOptions.Length > 0 || apuMemMode);
+        private int VramCount => apuMemMode ? ApuMemGb.Length : vramOptions.Length;
+        private string VramLabel(int i)
+        {
+            if (i == 0) return NebulaText.T("Auto", "Авто");
+            if (apuMemMode) return ApuMemGb[i] + " GB";
+            return ((double)vramOptions[i] * vramUnitMb / 1024).ToString("0.#") + " GB";
+        }
+        private float VramCardH => VramSupported ? 78 + ((VramCount + 5) / 6) * 46 + 56 : 0;
 
         private void LoadProcs()
         {
@@ -208,8 +253,28 @@ namespace GHelper.UI.Nebula.Pages
                     c.Txt(NebulaText.T($"and {procs.Count - 8} more…", $"и ещё {procs.Count - 8}…"), 256, ry + 24, c.F(11), th.Faint);
             }
 
+            // ---- iGPU memory ------------------------------------------------------------------------------
+            float vy = py + ph + 16;
+            if (VramSupported)
+            {
+                float vh = VramCardH;
+                c.Surface(236, vy, 1158, vh);
+                c.Txt(NebulaText.T("Memory for the integrated GPU", "Память для встроенной графики"), 256, vy + 30, c.F(15, FontStyle.Bold), th.Text);
+                c.Txt(NebulaText.T("Fixed share of RAM reserved for the iGPU. Auto lets the system decide. Takes effect after a restart.",
+                                   "Фиксированная доля ОЗУ под встроенную графику. «Авто» оставляет выбор системе. Применяется после перезагрузки."), 256, vy + 51, c.F(11), th.Faint);
+                float bx = 256, by = vy + 78; int col = 0;
+                for (int i = 0; i < VramCount; i++)
+                {
+                    c.Segment(bx, by, 176, 36, VramLabel(i), vramDraft == i, "gpu:vram:" + i);
+                    bx += 188; col++;
+                    if (col == 6) { col = 0; bx = 256; by += 46; }
+                }
+                bool vdirty = vramDraft != vramCurrent;
+                c.Button(1374 - 200, vy + vh - 50, 200, 36, vdirty ? NebulaText.T("Apply and restart…", "Применить и перезагрузить…") : NebulaText.T("Applied", "Применено"), "gpu:vram:apply", primary: true, enabled: vdirty);
+            }
+
             // ---- tuning -------------------------------------------------------------------------------
-            float ty0 = py + ph + 16;
+            float ty0 = vy + (VramSupported ? VramCardH + 16 : 0);
             var visible = All.Where(t => t.Visible).ToList();
             int rowsN = (visible.Count + 1) / 2;
             float h = nvidia ? 110 + rowsN * 74 + 30 : 102;
@@ -249,7 +314,7 @@ namespace GHelper.UI.Nebula.Pages
             if (enabled && id.Length > 0) c.Hit(r, id);
         }
 
-        public override float ContentHeight => 596 + ProcCardH + 16 + (nvidia ? 110 + ((All.Count(t => t.Visible) + 1) / 2) * 74 + 50 : 122);
+        public override float ContentHeight => 596 + ProcCardH + 16 + (VramSupported ? VramCardH + 16 : 0) + (nvidia ? 110 + ((All.Count(t => t.Visible) + 1) / 2) * 74 + 50 : 122);
 
         public override void Drag(string id, float t, bool done)
         {
@@ -273,6 +338,21 @@ namespace GHelper.UI.Nebula.Pages
 
         public override bool Click(string id, Point at, NebulaForm form)
         {
+            if (id == "gpu:vram:apply")
+            {
+                if (vramDraft < 0 || vramDraft == vramCurrent) return true;
+                try
+                {
+                    if (apuMemMode) Program.acpi.SetAPUMem(vramDraft);
+                    else { Program.acpi.SetVramMem(vramOptions[vramDraft]); AppConfig.Set("vram_mem", vramOptions[vramDraft]); }
+                    vramCurrent = vramDraft;
+                }
+                catch (Exception ex) { Logger.WriteLine("iGPU memory: " + ex.Message); return true; }
+                if (MessageBox.Show(form, Properties.Strings.AlertAPUMemoryRestart, Properties.Strings.AlertAPUMemoryRestartTitle, MessageBoxButtons.YesNo) == DialogResult.Yes)
+                    System.Diagnostics.Process.Start("shutdown", "/r /t 1");
+                return true;
+            }
+            if (id.StartsWith("gpu:vram:") && int.TryParse(id[9..], out int vi)) { vramDraft = vi; return true; }
             if (id.StartsWith("gpu:procs:kill:") && int.TryParse(id[15..], out int pid))
             {
                 Task.Run(() =>
