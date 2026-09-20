@@ -239,6 +239,29 @@ namespace GHelper.UI.Nebula
             catch (Exception ex) { Logger.WriteLine("OLED pixel shift: " + ex.Message); magFailed = true; SetPixelShift(false); }
         }
 
+        /// <summary>Visible check: jumps the image between the two extremes a few times.</summary>
+        public static void TestPixelShift()
+        {
+            if (!magReady) return;
+            var bounds = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
+            float mag = bounds.Width / (float)(bounds.Width - ShiftRange);
+            int n = 0;
+            var t = new System.Windows.Forms.Timer { Interval = 400 };
+            t.Tick += (_, _) =>
+            {
+                n++;
+                bool far = n % 2 == 1;
+                try { MagSetFullscreenTransform(mag, far ? ShiftRange : 0, far ? ShiftRange : 0); } catch { }
+                if (n >= 6)
+                {
+                    t.Stop(); t.Dispose();
+                    var (x, y) = ShiftPath[shiftStep];
+                    try { MagSetFullscreenTransform(mag, x, y); } catch { }
+                }
+            };
+            t.Start();
+        }
+
         // ---- dark theme ----------------------------------------------------------------------------
         public static bool IsDarkTheme()
         {

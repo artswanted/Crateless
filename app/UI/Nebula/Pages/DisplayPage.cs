@@ -176,6 +176,13 @@ namespace GHelper.UI.Nebula.Pages
                     string sh = NebulaText.T("moves the image by up to 3 px every", "сдвигает изображение до 3 px каждые") + " " + OledCare.ShiftSeconds + " " + NebulaText.T("s", "с") + "  ⌄";
                     c.Txt(sh, 671, y + 31, c.F(11, FontStyle.Bold), c.IsHover("display:shiftsec") ? th.Text : th.Accent);
                     c.Hit(c.R(671, y + 14, 300, 26), "display:shiftsec");
+                    if (OledCare.IsPixelShift)
+                    {
+                        string tst = NebulaText.T("Test", "Проверить");
+                        var tf = c.F(11, FontStyle.Bold);
+                        c.Txt(tst, 1034, y + 31, tf, c.IsHover("display:shifttest") ? th.Text : th.Accent, StringAlignment.Far);
+                        c.Hit(c.R(1034 - c.TextWidth(tst, tf) - 8, y + 14, c.TextWidth(tst, tf) + 16, 26), "display:shifttest");
+                    }
                 }
                 c.Toggle(996, y - 17, OledCare.IsPixelShift, "display:pixelshift", !OledCare.PixelShiftUnsupported);
                 y += 85;
@@ -244,6 +251,7 @@ namespace GHelper.UI.Nebula.Pages
                     OledCare.SetTransparency(transparency);
                     return true;
                 case "display:pixelshift": OledCare.SetPixelShift(!OledCare.IsPixelShift); return true;
+                case "display:shifttest": OledCare.TestPixelShift(); return true;
                 case "display:shiftsec":
                     Menu(form, at, new[] { 30, 60, 120, 300 }.Select(s => (s + " " + NebulaText.T("s", "с"), s == OledCare.ShiftSeconds, (Action)(() => AppConfig.Set("oled_shift_sec", s)))));
                     return true;

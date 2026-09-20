@@ -349,5 +349,6 @@
  "Pixel shift": "Зсув пікселів",
  "Not supported on this system.": "На цій системі недоступно.",
  "moves the image by up to 3 px every": "зсуває зображення до 3 px кожні",
- "s": "с"
+ "s": "с",
+ "Test": "Перевірити"
 }

@@ -343,5 +343,6 @@
  "Pixel shift": "Сдвиг пикселей",
  "Not supported on this system.": "На этой системе недоступно.",
  "moves the image by up to 3 px every": "сдвигает изображение до 3 px каждые",
- "s": "с"
+ "s": "с",
+ "Test": "Проверить"
 }
