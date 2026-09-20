@@ -175,6 +175,8 @@ namespace GHelper.UI.Nebula
         private static bool magReady, magFailed;
         private static int shiftStep;
         private static long lastShift;
+        private static int shiftLogged;
+        private const int ShiftRange = 4; // px of travel; magnification is 1 + ShiftRange/screenWidth
         // 3 px square walk; offsets must be >= 0 for the API, so the image moves up/left by 0..3 px
         private static readonly (int x, int y)[] ShiftPath = { (0, 0), (1, 0), (2, 0), (3, 0), (3, 1), (3, 2), (3, 3), (2, 3), (1, 3), (0, 3), (0, 2), (0, 1), (1, 1), (2, 2), (2, 1), (1, 2) };
 
@@ -205,6 +207,7 @@ namespace GHelper.UI.Nebula
                 if (magReady)
                 {
                     try { MagSetFullscreenTransform(1.0f, 0, 0); MagUninitialize(); } catch { }
+                    shiftLogged = 0;
                     magReady = false;
                 }
                 shiftStep = 0;
@@ -220,7 +223,13 @@ namespace GHelper.UI.Nebula
             var (x, y) = ShiftPath[shiftStep];
             try
             {
-                if (!MagSetFullscreenTransform(1.0f, x, y))
+                // At exactly 1.0x the API allows an offset range of 0, so we magnify by the smallest
+                // amount that leaves ShiftRange px of travel (docs: 0..width - width/magLevel).
+                var bounds = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
+                float mag = bounds.Width / (float)(bounds.Width - ShiftRange);
+                bool ok = MagSetFullscreenTransform(mag, x, y);
+                if (shiftLogged++ < 3) Logger.WriteLine($"OLED pixel shift: mag {mag:F5} offset {x},{y} -> {ok}");
+                if (!ok)
                 {
                     Logger.WriteLine("OLED pixel shift: transform refused, disabling");
                     magFailed = true;
