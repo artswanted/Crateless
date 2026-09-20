@@ -1,5 +1,9 @@
 # Crateless
 
+[![Build](https://github.com/artswanted/Crateless/actions/workflows/build.yml/badge.svg)](https://github.com/artswanted/Crateless/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/artswanted/Crateless?include_prereleases&label=release)](https://github.com/artswanted/Crateless/releases)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+
 Control tool for ASUS ROG laptops. Performance modes, fan curves, GPU switching, power
 limits, screen, battery, lighting. One exe, no services, no account, no telemetry.
 
@@ -15,6 +19,8 @@ are plain JSON files in `app/Resources/Nebula/strings.<culture>.json`, English t
 
 Download: [Releases](https://github.com/artswanted/Crateless/releases). `Crateless.exe`
 needs the .NET 10 Desktop Runtime, `Crateless-standalone.exe` does not.
+
+![Crateless overview](docs/screenshots/overview.png)
 
 ## Why
 
