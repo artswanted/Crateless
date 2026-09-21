@@ -87,6 +87,7 @@ namespace GHelper
 
             hardwareOverlay = new HardwareOverlay();
             try { UI.Nebula.OledCare.Init(); } catch (Exception ex) { Logger.WriteLine("OLED care init: " + ex.Message); }
+            try { UI.Nebula.AuraWallpaper.Init(); } catch (Exception ex) { Logger.WriteLine("Aura wallpaper init: " + ex.Message); }
 
             ProcessHelper.CheckAlreadyRunning();
             ProcessHelper.SetPriority();
