@@ -147,6 +147,8 @@ namespace GHelper.UI.Nebula
                     {
                         idleDimmed = true;
                         AppConfig.Set("oled_idle_saved", savedBrightness);
+                        // VisualControl stores brightness per power source; remember which key we dimmed
+                        AppConfig.Set("oled_idle_key", SystemInformation.PowerStatus.PowerLineStatus != PowerLineStatus.Online && AppConfig.SaveDimming() ? "brightness_battery" : "brightness");
                         Display.VisualControl.SetBrightness(IdleDimLevel);
                         Logger.WriteLine("OLED idle dim: dimmed from " + savedBrightness);
                     }
@@ -170,7 +172,11 @@ namespace GHelper.UI.Nebula
             AppConfig.Set("oled_idle_saved", 0);
             try
             {
-                Display.VisualControl.SetBrightness(saved);
+                // put the value back into the key it was taken from, then re-apply whatever the current power source uses
+                string key = AppConfig.GetString("oled_idle_key") ?? "brightness";
+                if (AppConfig.Get(key, 100) <= IdleDimLevel) AppConfig.Set(key, saved);
+                if (AppConfig.Get("brightness", 100) <= IdleDimLevel) AppConfig.Set("brightness", saved);
+                Display.VisualControl.SetBrightness(Math.Max(Display.VisualControl.GetBrightness(), saved));
                 Program.settingsForm?.VisualiseBrightness();
                 Logger.WriteLine("OLED idle dim: restored " + saved);
             }
