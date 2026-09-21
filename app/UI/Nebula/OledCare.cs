@@ -60,6 +60,8 @@ namespace GHelper.UI.Nebula
         /// <summary>Restores the OLED care features that were left on. Call once on the UI thread.</summary>
         public static void Init()
         {
+            // a previous instance may have been closed while the screen was dimmed
+            if (AppConfig.Get("oled_idle_saved", 0) > 0) RestoreIdle();
             if (!AppConfig.IsOLED()) return;
             if (AppConfig.Is("oled_focus_dim")) SetFocusDim(true);
             if (AppConfig.Is("oled_idle_dim")) SetIdleDim(true);
@@ -114,6 +116,8 @@ namespace GHelper.UI.Nebula
                 idleTimer.Tick -= IdleTick;
                 idleTimer.Tick += IdleTick;
                 idleTimer.Start();
+                Application.ApplicationExit -= OnExit;
+                Application.ApplicationExit += OnExit;
                 Logger.WriteLine("OLED idle dim: on, " + IdleMinutes + " min");
             }
             else
@@ -142,6 +146,7 @@ namespace GHelper.UI.Nebula
                     if (savedBrightness > IdleDimLevel)
                     {
                         idleDimmed = true;
+                        AppConfig.Set("oled_idle_saved", savedBrightness);
                         Display.VisualControl.SetBrightness(IdleDimLevel);
                         Logger.WriteLine("OLED idle dim: dimmed from " + savedBrightness);
                     }
@@ -155,16 +160,21 @@ namespace GHelper.UI.Nebula
             catch (Exception ex) { Logger.WriteLine("OLED idle dim: " + ex.Message); }
         }
 
+        private static void OnExit(object? sender, EventArgs e) => RestoreIdle();
+
         private static void RestoreIdle()
         {
-            if (!idleDimmed) return;
+            int saved = idleDimmed ? savedBrightness : AppConfig.Get("oled_idle_saved", 0);
             idleDimmed = false;
-            if (savedBrightness > 0)
+            if (saved <= 0) return;
+            AppConfig.Set("oled_idle_saved", 0);
+            try
             {
-                Display.VisualControl.SetBrightness(savedBrightness);
+                Display.VisualControl.SetBrightness(saved);
                 Program.settingsForm?.VisualiseBrightness();
-                Logger.WriteLine("OLED idle dim: restored " + savedBrightness);
+                Logger.WriteLine("OLED idle dim: restored " + saved);
             }
+            catch (Exception ex) { Logger.WriteLine("OLED idle dim: " + ex.Message); }
         }
 
         // ---- pixel shift (nudge top-level windows, the OLEDShift approach) -------------------------
