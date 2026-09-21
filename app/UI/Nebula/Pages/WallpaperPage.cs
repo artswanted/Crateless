@@ -14,6 +14,8 @@ namespace GHelper.UI.Nebula.Pages
         private Bitmap? preview;
         private (int color, int style) previewKey = (-1, -1);
         private float bottom = 900;
+        private string category = "";
+        private List<string> categories = new();
 
         private const int Cols = 3;
         private const float CardW = 370, CardH = 330, Gap = 24, ThumbH = 222;
@@ -50,6 +52,26 @@ namespace GHelper.UI.Nebula.Pages
             c.Button(1144, y + 30, 230, 32, NebulaText.T("Choose a file…", "Выбрать файл…"), "wp:file", primary: false);
             y += 96 + 16;
 
+            // ---- category filter (wrapping row of segments) -------------------------------------------
+            categories = items.Select(i => i.Category).Where(s => s.Length > 0).Distinct().OrderBy(s => s).ToList();
+            if (categories.Count > 1)
+            {
+                var sf = c.F(11, FontStyle.Bold);
+                float x = 236, rowH = 32, gapX = 8;
+                for (int i = -1; i < categories.Count; i++)
+                {
+                    string name = i < 0 ? NebulaText.T("All", "Все") : categories[i];
+                    int count = i < 0 ? items.Count : items.Count(it => it.Category == categories[i]);
+                    string label = $"{name}  {count}";
+                    float w = c.TextWidth(label, sf) + 28;
+                    if (x + w > 1394) { x = 236; y += rowH + 8; }
+                    c.Segment(x, y, w, rowH, label, i < 0 ? category.Length == 0 : category == categories[i], "wp:cat:" + i);
+                    x += w + gapX;
+                }
+                y += rowH + 16;
+            }
+            if (category.Length > 0) items = items.Where(i => i.Category == category).ToList();
+
             // ---- gallery grid ----------------------------------------------------------------------
             if (items.Count == 0)
             {
@@ -60,9 +82,10 @@ namespace GHelper.UI.Nebula.Pages
             for (int i = 0; i < items.Count; i++)
             {
                 var it = items[i];
-                RogWallpapers.LoadThumb(it, Repaint);
                 float cx = 236 + (i % Cols) * (CardW + Gap), cy = y + (i / Cols) * (CardH + Gap);
                 var card = c.R(cx, cy, CardW, CardH);
+                // only fetch thumbnails for cards that are actually on screen
+                if (c.G.VisibleClipBounds.IntersectsWith(card)) RogWallpapers.LoadThumb(it, Repaint);
                 c.Card(card, 12, th.Card, th.Line);
 
                 // thumbnail, cover-fit, clipped to the rounded top of the card
@@ -173,6 +196,7 @@ namespace GHelper.UI.Nebula.Pages
         public override bool Click(string id, Point at, NebulaForm form)
         {
             if (id.StartsWith("wp:style:")) { AuraWallpaper.SetStyle((AuraWallpaper.Style)int.Parse(id[9..])); return true; }
+            if (id.StartsWith("wp:cat:")) { int n = int.Parse(id[7..]); category = n < 0 || n >= categories.Count ? "" : categories[n]; form.ScrollTop(); return true; }
             if (id.StartsWith("wp:dl:")) { if (Find(id) is { } it) RogWallpapers.Download(it, false, Repaint); return true; }
             if (id.StartsWith("wp:set:"))
             {

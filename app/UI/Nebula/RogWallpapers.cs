@@ -62,8 +62,14 @@ namespace GHelper.UI.Nebula
             {
                 try
                 {
-                    string html = await http.GetStringAsync(GalleryUrl);
-                    var items = Parse(html);
+                    List<Item> items;
+                    try { items = await FetchApi(); }
+                    catch (Exception ex)
+                    {
+                        // the JSON API is what the site itself uses; fall back to the page's embedded state
+                        Logger.WriteLine("ROG wallpapers API: " + ex.Message + ", falling back to the page");
+                        items = Parse(await http.GetStringAsync(GalleryUrl));
+                    }
                     lock (Items)
                     {
                         // keep already downloaded thumbnails when reloading
@@ -88,12 +94,64 @@ namespace GHelper.UI.Nebula
             });
         }
 
+        private const string ApiUrl = "https://api-rog.asus.com/recent-data/api/v4/wallpaper/Filter?WebsiteCode=global&Sort=newest:asc&PageSize=100&Page=";
+
+        /// <summary>The same JSON endpoint the gallery page calls for its "load more"; all pages are read.</summary>
+        private static async Task<List<Item>> FetchApi()
+        {
+            var list = new List<Item>();
+            for (int page = 1; page <= 20; page++)
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(await http.GetStringAsync(ApiUrl + page));
+                var result = doc.RootElement.GetProperty("result");
+                int total = result.TryGetProperty("wallpaperTotal", out var t) ? t.GetInt32() : 0;
+                int before = list.Count;
+                foreach (var w in result.GetProperty("wallpapers").EnumerateArray())
+                {
+                    var it = new Item
+                    {
+                        Id = w.GetProperty("wId").GetInt32(),
+                        Name = w.GetProperty("name").GetString() ?? "",
+                        Category = w.TryGetProperty("category", out var c) ? c.GetString() ?? "" : "",
+                        Thumb = w.GetProperty("thumbnail").GetString() ?? "",
+                        Downloads = w.TryGetProperty("download", out var d) ? d.GetInt32() : 0,
+                    };
+                    if (w.TryGetProperty("devices", out var devices))
+                        foreach (var dev in devices.EnumerateArray())
+                        {
+                            string devName = (dev.TryGetProperty("name", out var dn) ? dn.GetString() ?? "" : "").ToLowerInvariant();
+                            var target = devName.Contains("phone") || devName.Contains("mobile") ? it.Phone : it.Desktop;
+                            if (!dev.TryGetProperty("images", out var images)) continue;
+                            foreach (var im in images.EnumerateArray())
+                            {
+                                var v = new Variant
+                                {
+                                    Width = im.TryGetProperty("width", out var iw) ? iw.GetInt32() : 0,
+                                    Height = im.TryGetProperty("high", out var ih) ? ih.GetInt32() : 0,
+                                    Ratio = im.TryGetProperty("ratio", out var ir) ? ir.GetString() ?? "" : "",
+                                    Preview = im.TryGetProperty("image", out var ii) ? ii.GetString() ?? "" : "",
+                                    Url = im.TryGetProperty("dlUrl", out var iu) ? iu.GetString() ?? "" : "",
+                                };
+                                if (v.Url.StartsWith("http")) target.Add(v);
+                            }
+                        }
+                    if (it.Name.Length > 0 && it.Thumb.Length > 0 && it.Desktop.Count > 0 && !list.Any(x => x.Id == it.Id)) list.Add(it);
+                }
+                if (list.Count == before || list.Count >= total) break;
+            }
+            if (list.Count == 0) throw new Exception("empty result");
+            return list;
+        }
+
+        private static readonly SemaphoreSlim thumbGate = new(4);
+
         public static void LoadThumb(Item it, Action repaint)
         {
             if (it.ThumbImage is not null || it.ThumbLoading || it.ThumbFailed || it.Thumb.Length == 0) return;
             it.ThumbLoading = true;
             Task.Run(async () =>
             {
+                await thumbGate.WaitAsync();
                 try
                 {
                     var bytes = await http.GetByteArrayAsync(it.Thumb);
@@ -103,6 +161,7 @@ namespace GHelper.UI.Nebula
                     it.ThumbImage = Fit(img, 480, 300);
                 }
                 catch (Exception ex) { it.ThumbFailed = true; Logger.WriteLine("ROG wallpaper thumb: " + ex.Message); }
+                finally { thumbGate.Release(); }
                 it.ThumbLoading = false;
                 repaint();
             });

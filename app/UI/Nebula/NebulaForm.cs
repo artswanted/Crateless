@@ -123,6 +123,8 @@ namespace GHelper.UI.Nebula
 
         // ---- pages ---------------------------------------------------------------------------------
         /// <summary>Shows the window on the given rail page.</summary>
+        public void ScrollTop() { scroll = 0; Invalidate(); }
+
         public void ShowPage(string id)
         {
             if (!Visible)
