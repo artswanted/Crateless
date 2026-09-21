@@ -1,37 +1,122 @@
 using GHelper.USB;
 using System.Diagnostics;
+using System.Drawing.Drawing2D;
 
 namespace GHelper.UI.Nebula.Pages
 {
-    /// <summary>Wallpaper page: links to the official ROG gallery, a file picker and the Aura wallpaper.</summary>
+    /// <summary>Wallpaper page: the official ROG gallery loaded in-app with previews and download buttons, a file picker and the Aura wallpaper.</summary>
     public sealed class WallpaperPage : NebulaPage
     {
         public override string Id => "wallpaper";
         public override string Title => NebulaText.T("Wallpaper", "Обои");
-        public override string Subtitle => NebulaText.T("ROG galleries, your own image, or a still wallpaper in your Aura colour.", "Галереи ROG, своя картинка или обои в цвете подсветки.");
+        public override string Subtitle => NebulaText.T("Official ROG wallpapers straight from asus.com, your own image, or a still wallpaper in your Aura colour.", "Официальные обои ROG прямо с asus.com, своя картинка или обои в цвете подсветки.");
 
         private Bitmap? preview;
         private (int color, int style) previewKey = (-1, -1);
+        private float bottom = 900;
 
-        public override float ContentHeight => 139 + 170 + 16 + 372 + 20;
+        private const int Cols = 3;
+        private const float CardW = 370, CardH = 330, Gap = 24, ThumbH = 222;
+
+        public override float ContentHeight => bottom + 20;
+
+        public override void Refresh(bool opened)
+        {
+            if (opened) RogWallpapers.Load(Repaint);
+        }
+
+        private static void Repaint()
+        {
+            try { Program.nebulaForm?.BeginInvoke(Program.nebulaForm.Invalidate); } catch { }
+        }
 
         public override void Paint(NebulaCanvas c)
         {
             var th = c.Theme;
+            float y = 139;
 
-            // ---- ROG galleries ----------------------------------------------------------------------
-            c.Surface(236, 139, 1158, 170);
-            c.Txt(NebulaText.T("Official ROG wallpapers", "Официальные обои ROG"), 256, 169, c.F(15, FontStyle.Bold), th.Text);
-            c.Txt(NebulaText.T("Free downloads on rog.asus.com, desktop and phone sizes. Nothing is bundled; pick a file below once it is downloaded.",
-                               "Бесплатные загрузки на rog.asus.com, размеры для рабочего стола и телефона. В приложение ничего не встроено, скачанный файл выберите ниже."), 256, 190, c.F(11), th.Muted);
-            c.Button(256, 224, 260, 36, NebulaText.T("ROG gallery  ↗", "Галерея ROG  ↗"), "wp:gallery", primary: true);
-            c.Button(528, 224, 260, 36, NebulaText.T("By product  ↗", "По устройствам  ↗"), "wp:products", primary: false);
-            c.Button(800, 224, 260, 36, NebulaText.T("Choose a file…", "Выбрать файл…"), "wp:file", primary: false);
-            c.Button(1072, 224, 302, 36, NebulaText.T("Windows background settings  ↗", "Параметры фона Windows  ↗"), "wp:windows", primary: false);
-            c.Txt(NebulaText.T("Choosing a file sets it as the wallpaper right away.", "Выбранный файл сразу становится обоями."), 256, 288, c.F(10), th.Faint);
+            // ---- header / tools ----------------------------------------------------------------------
+            c.Surface(236, y, 1158, 96);
+            c.Txt(NebulaText.T("Official ROG wallpapers", "Официальные обои ROG"), 256, y + 30, c.F(15, FontStyle.Bold), th.Text);
+            List<RogWallpapers.Item> items;
+            lock (RogWallpapers.Items) items = RogWallpapers.Items.ToList();
+            string state = RogWallpapers.Loading ? NebulaText.T("Loading the gallery from asus.com…", "Загружаем галерею с asus.com…")
+                         : RogWallpapers.Error.Length > 0 ? NebulaText.T("Could not reach the ASUS site: ", "Не удалось связаться с сайтом ASUS: ") + RogWallpapers.Error
+                         : NebulaText.T($"{items.Count} wallpapers. Files are saved to Pictures\\ROG Wallpapers.", $"Обоев: {items.Count}. Файлы сохраняются в Изображения\\ROG Wallpapers.");
+            c.Txt(state, 256, y + 52, c.F(11), RogWallpapers.Error.Length > 0 ? th.Danger : th.Muted);
+            c.Txt(NebulaText.T("Nothing is bundled with the app; previews and files come from the ASUS CDN when this page is open.", "В приложение ничего не встроено, превью и файлы приходят с CDN ASUS при открытии страницы."), 256, y + 72, c.F(10), th.Faint);
+            c.Button(900, y + 30, 110, 32, NebulaText.T("Reload", "Обновить"), "wp:reload", primary: false, enabled: !RogWallpapers.Loading);
+            c.Button(1022, y + 30, 110, 32, NebulaText.T("Folder", "Папка"), "wp:folder", primary: false);
+            c.Button(1144, y + 30, 230, 32, NebulaText.T("Choose a file…", "Выбрать файл…"), "wp:file", primary: false);
+            y += 96 + 16;
+
+            // ---- gallery grid ----------------------------------------------------------------------
+            if (items.Count == 0)
+            {
+                c.Surface(236, y, 1158, 120);
+                c.Txt(RogWallpapers.Loading ? NebulaText.T("Loading…", "Загружаем…") : NebulaText.T("Nothing to show. Press Reload to try again.", "Показать нечего. Нажмите «Обновить», чтобы повторить."), 256, y + 66, c.F(12), th.Muted);
+                y += 120;
+            }
+            for (int i = 0; i < items.Count; i++)
+            {
+                var it = items[i];
+                RogWallpapers.LoadThumb(it, Repaint);
+                float cx = 236 + (i % Cols) * (CardW + Gap), cy = y + (i / Cols) * (CardH + Gap);
+                var card = c.R(cx, cy, CardW, CardH);
+                c.Card(card, 12, th.Card, th.Line);
+
+                // thumbnail, cover-fit, clipped to the rounded top of the card
+                var tr = c.R(cx, cy, CardW, ThumbH);
+                using (var clip = NebulaCanvas.Rounded(card, c.S(12)))
+                {
+                    var saved = c.G.Clip;
+                    c.G.SetClip(clip, CombineMode.Intersect);
+                    c.G.SetClip(tr, CombineMode.Intersect);
+                    if (it.ThumbImage is Image img)
+                    {
+                        float k = Math.Max(tr.Width / img.Width, tr.Height / img.Height);
+                        float w = img.Width * k, h = img.Height * k;
+                        c.G.InterpolationMode = InterpolationMode.HighQualityBilinear;
+                        c.G.DrawImage(img, new RectangleF(tr.X + (tr.Width - w) / 2, tr.Y + (tr.Height - h) / 2, w, h));
+                    }
+                    else
+                    {
+                        using var b = new SolidBrush(th.Raised);
+                        c.G.FillRectangle(b, tr);
+                        string ph = it.ThumbFailed ? NebulaText.T("No preview", "Нет превью") : NebulaText.T("Loading…", "Загружаем…");
+                        c.Txt(ph, cx + CardW / 2, cy + ThumbH / 2 + 5, c.F(11), th.Faint, StringAlignment.Center);
+                    }
+                    c.G.Clip = saved;
+                }
+                if (it.Category.Length > 0) c.Pill(cx + 12, cy + 12, it.Category, Color.FromArgb(180, th.Bg), th.Text);
+
+                c.Txt(Trim(it.Name, 36), cx + 16, cy + ThumbH + 26, c.F(13, FontStyle.Bold), th.Text);
+                var best = RogWallpapers.Best(it);
+                string meta = best is null ? "" : $"{best.Width}×{best.Height}";
+                if (it.Desktop.Count > 1) meta += NebulaText.T($" · {it.Desktop.Count} sizes", $" · размеров: {it.Desktop.Count}");
+                if (it.Phone.Count > 0) meta += NebulaText.T(" · phone", " · телефон");
+                c.Txt(meta, cx + 16, cy + ThumbH + 46, c.F(10), th.Faint);
+                c.Txt(NebulaText.T($"{it.Downloads:N0} downloads", $"{it.Downloads:N0} загрузок"), cx + CardW - 16, cy + ThumbH + 46, c.F(10), th.Faint, StringAlignment.Far);
+
+                float by = cy + ThumbH + 60;
+                bool have = it.LocalFile.Length > 0 && File.Exists(it.LocalFile);
+                if (it.Downloading)
+                    c.Txt(NebulaText.T("Downloading…", "Скачиваем…"), cx + 16, by + 21, c.F(11), th.Accent);
+                else if (it.Error.Length > 0)
+                    c.Txt(Trim(it.Error, 40), cx + 16, by + 21, c.F(10), th.Danger);
+                else if (have)
+                {
+                    c.Txt("✓ " + NebulaText.T("Saved", "Скачано"), cx + 16, by + 21, c.F(11, FontStyle.Bold), th.Accent);
+                    c.Button(cx + 118, by, 112, 32, NebulaText.T("Show", "Показать"), "wp:show:" + it.Id, primary: false);
+                }
+                else
+                    c.Button(cx + 16, by, 214, 32, NebulaText.T("Download", "Скачать"), "wp:dl:" + it.Id, primary: false);
+                c.Button(cx + 242, by, 112, 32, NebulaText.T("Apply", "Поставить"), "wp:set:" + it.Id, primary: true, enabled: !it.Downloading);
+            }
+            if (items.Count > 0) y += ((items.Count + Cols - 1) / Cols) * (CardH + Gap) - Gap;
+            y += 16;
 
             // ---- Aura wallpaper --------------------------------------------------------------------
-            float y = 139 + 170 + 16;
             c.Surface(236, y, 1158, 372);
             c.Txt(NebulaText.T("Aura wallpaper", "Aura-обои"), 256, y + 30, c.F(15, FontStyle.Bold), th.Text);
             c.Txt(NebulaText.T("A still image in the current keyboard colour. Redrawn only when the colour or effect changes, so nothing runs in the background.",
@@ -49,9 +134,11 @@ namespace GHelper.UI.Nebula.Pages
             try { if (Aura.GetModes().TryGetValue(mode, out var mn)) modeName = mn; } catch { }
             c.Txt(NebulaText.T("Colour source", "Источник цвета") + ": " + NebulaText.T("keyboard effect", "эффект клавиатуры") + (modeName.Length > 0 ? " · " + modeName : ""), 256, y + 172, c.F(11), th.Muted);
             c.Txt(NebulaText.T("Cycling effects rotate the hue slowly, one step every 20 seconds.", "Циклические эффекты медленно вращают оттенок, шаг раз в 20 секунд."), 256, y + 192, c.F(10), th.Faint);
-            c.Txt(NebulaText.T("Turning it off restores the wallpaper you had before.", "При выключении возвращаются прежние обои."), 256, y + 212, c.F(10), th.Faint);
+            c.Txt(NebulaText.T("Turning it off restores the wallpaper you had before. The original ASUS Aura packs only exist inside Armoury Crate and cannot be downloaded separately.",
+                               "При выключении возвращаются прежние обои. Оригинальные Aura-паки ASUS существуют только внутри Armoury Crate и отдельно не скачиваются."), 256, y + 212, c.F(10), th.Faint);
             c.Button(256, y + 240, 220, 34, NebulaText.T("Change colour", "Сменить цвет"), "wp:color", primary: false);
             c.Button(488, y + 240, 220, 34, NebulaText.T("Restore previous", "Вернуть прежние"), "wp:restore", primary: false, enabled: (AppConfig.GetString("aura_wallpaper_prev") ?? "").Length > 0);
+            c.Button(256, y + 286, 452, 34, NebulaText.T("Windows background settings  ↗", "Параметры фона Windows  ↗"), "wp:windows", primary: false);
 
             // preview
             var col = Aura.Color1;
@@ -66,21 +153,46 @@ namespace GHelper.UI.Nebula.Pages
             using (var clip = NebulaCanvas.Rounded(pr, c.S(10)))
             {
                 var saved = c.G.Clip;
-                c.G.SetClip(clip, System.Drawing.Drawing2D.CombineMode.Intersect);
+                c.G.SetClip(clip, CombineMode.Intersect);
                 c.G.DrawImage(preview, pr);
                 c.G.Clip = saved;
             }
             using (var pen = new Pen(th.Line, 1f)) using (var clip = NebulaCanvas.Rounded(pr, c.S(10))) c.G.DrawPath(pen, clip);
             c.Txt(NebulaText.T("Preview", "Предпросмотр"), 770, y + 366, c.F(10), th.Faint);
+            bottom = y + 372;
+        }
+
+        private static string Trim(string s, int max) => string.IsNullOrEmpty(s) ? "" : s.Length <= max ? s : s[..(max - 1)] + "…";
+
+        private static RogWallpapers.Item? Find(string id)
+        {
+            int n = int.Parse(id[(id.LastIndexOf(':') + 1)..]);
+            lock (RogWallpapers.Items) return RogWallpapers.Items.FirstOrDefault(i => i.Id == n);
         }
 
         public override bool Click(string id, Point at, NebulaForm form)
         {
             if (id.StartsWith("wp:style:")) { AuraWallpaper.SetStyle((AuraWallpaper.Style)int.Parse(id[9..])); return true; }
+            if (id.StartsWith("wp:dl:")) { if (Find(id) is { } it) RogWallpapers.Download(it, false, Repaint); return true; }
+            if (id.StartsWith("wp:set:"))
+            {
+                if (Find(id) is { } it)
+                {
+                    if (it.LocalFile.Length > 0 && File.Exists(it.LocalFile)) AuraWallpaper.SetCustom(it.LocalFile);
+                    else RogWallpapers.Download(it, true, Repaint);
+                }
+                return true;
+            }
+            if (id.StartsWith("wp:show:"))
+            {
+                if (Find(id) is { LocalFile.Length: > 0 } it)
+                    try { Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{it.LocalFile}\"") { UseShellExecute = true }); } catch (Exception ex) { Logger.WriteLine(ex.Message); }
+                return true;
+            }
             switch (id)
             {
-                case "wp:gallery": Open("https://rog.asus.com/wallpapers/"); return true;
-                case "wp:products": Open("https://rog.asus.com/wallpapers/products/"); return true;
+                case "wp:reload": RogWallpapers.Load(Repaint, force: true); return true;
+                case "wp:folder": RogWallpapers.OpenFolder(); return true;
                 case "wp:windows": Open("ms-settings:personalization-background"); return true;
                 case "wp:file":
                 {
