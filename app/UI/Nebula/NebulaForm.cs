@@ -64,6 +64,7 @@ namespace GHelper.UI.Nebula
             ("keyboard", "keyboard", () => NebulaText.RailKeyboard, false),
             ("mouse",    "mouse",    () => NebulaText.RailMouse,    false),
             ("settings", "settings", () => NebulaText.RailSettings, false),
+            ("updates",  "download", () => NebulaText.T("Updates", "Обновления"), false),
         };
 
         public NebulaForm()
@@ -79,7 +80,7 @@ namespace GHelper.UI.Nebula
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             DoubleBuffered = true;
 
-            foreach (var p in new NebulaPage[] { new OverviewPage(), new PowerPage(), new FanPage(), new GpuPage(), new BatteryPage(), new DisplayPage(), new GameVisualPage(), new LightPage(), new KeysPage(), new DevicesPage(), new SettingsPage() })
+            foreach (var p in new NebulaPage[] { new OverviewPage(), new PowerPage(), new FanPage(), new GpuPage(), new BatteryPage(), new DisplayPage(), new GameVisualPage(), new LightPage(), new KeysPage(), new DevicesPage(), new SettingsPage(), new UpdatesPage() })
                 pages[p.Id] = p;
             page = pages["overview"];
 
@@ -284,7 +285,7 @@ namespace GHelper.UI.Nebula
                 {
                     var hs = g.Save();
                     g.TranslateTransform(PageShift, 0);
-                    g.ScaleTransform(PageScale, PageScale);
+                    g.ScaleTransform(PageScale, 1f);
                     PaintHeader(canvas, page.Title, page.Subtitle);
                     g.Restore(hs);
                 }
@@ -295,11 +296,11 @@ namespace GHelper.UI.Nebula
 
                 var saved = g.Save();
                 float ps = PageScale;
-                float clipTop = S(130) * ps, clipBottom = S(ViewBottom + 12) * ps;
+                float clipTop = S(130), clipBottom = S(ViewBottom + 12);
                 g.SetClip(new RectangleF(S(RailW) + 1, clipTop, ClientSize.Width, clipBottom - clipTop));
                 // page grid: shift right of the rail and shrink so 1394 still fits the window
                 g.TranslateTransform(PageShift, -off);
-                g.ScaleTransform(ps, ps);
+                g.ScaleTransform(ps, 1f);
                 int before = canvas.Hits.Count;
                 try { page.Paint(canvas); }
                 catch (Exception ex) { Logger.WriteLine($"Nebula paint {page.Id}: {ex.Message}"); }
@@ -308,8 +309,9 @@ namespace GHelper.UI.Nebula
                 for (int i = before; i < canvas.Hits.Count; i++)
                 {
                     var h = canvas.Hits[i];
-                    var r = new RectangleF(h.rect.X * ps + PageShift, h.rect.Y * ps - off, h.rect.Width * ps, h.rect.Height * ps);
-                    if (r.Bottom < clipTop || r.Top > clipBottom) r = RectangleF.Empty;
+                    var r = new RectangleF(h.rect.X * ps + PageShift, h.rect.Y - off, h.rect.Width * ps, h.rect.Height);
+                    r = RectangleF.Intersect(r, new RectangleF(S(RailW) + 1, clipTop,
+                        ClientSize.Width - S(RailW) - 1, clipBottom - clipTop));
                     canvas.Hits[i] = (r, h.id, h.tip);
                 }
 
@@ -387,7 +389,7 @@ namespace GHelper.UI.Nebula
             {
                 var fs = c.G.Save();
                 c.G.TranslateTransform(PageShift, 0);
-                c.G.ScaleTransform(PageScale, PageScale);
+                c.G.ScaleTransform(PageScale, 1f);
                 c.Txt("●  " + sensors, 124, 1040, c.F(11), theme.Faint);
                 var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
                 c.Txt($"CRATELESS {ver?.Major}.{ver?.Minor}.{ver?.Build}  /  NEBULA", 1394, 1040, c.F(10), theme.Faint, StringAlignment.Far);
@@ -493,7 +495,7 @@ namespace GHelper.UI.Nebula
                 {
                     var plot = FanPage.PlotRect;
                     float ps = PageScale;
-                    float dx = (p.X - PageShift) / ps, dy = (p.Y + S(scroll)) / ps;
+                    float dx = (p.X - PageShift) / ps, dy = p.Y + S(scroll);
                     float tx = Math.Clamp((dx / k - plot.X) / plot.Width, 0f, 1f);
                     float ty = Math.Clamp((dy / k - plot.Y) / plot.Height, 0f, 1f);
                     fan.DragPoint(int.Parse(dragId[14..]), tx, ty, (ModifierKeys & Keys.Shift) == Keys.Shift);

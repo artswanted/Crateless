@@ -14,6 +14,11 @@ namespace GHelper.AutoUpdate
 
         public string versionUrl = "https://github.com/artswanted/Crateless/releases";
         public bool update = false;
+        public bool checkedOnce = false;
+        public string latestTag = "";
+
+        /// <summary>On-demand check without the 12 h throttle and without auto-download (Nebula updates page).</summary>
+        public void CheckNow() => Task.Run(() => CheckForUpdatesAsync(false));
 
         static long lastUpdate;
 
@@ -94,6 +99,8 @@ namespace GHelper.AutoUpdate
                     var appVersion = new Version(Assembly.GetExecutingAssembly().GetName().Version.ToString());
                     //appVersion = new Version("0.50.0.0"); 
 
+                    checkedOnce = true;
+                    latestTag = tag;
                     if (gitVersion.CompareTo(appVersion) > 0)
                     {
                         versionUrl = url;

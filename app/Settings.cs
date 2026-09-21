@@ -1164,6 +1164,7 @@ namespace GHelper
 
         /// <summary>Nebula shell bridges: updates window, app update check, quit.</summary>
         public void UpdatesToggle() => ButtonUpdates_Click(null, EventArgs.Empty);
+        public AutoUpdate.AutoUpdateControl UpdateControl => updateControl;
         public void CheckAppUpdate() => updateControl.Update();
         public void QuitApp() => ButtonQuit_Click(null, EventArgs.Empty);
 

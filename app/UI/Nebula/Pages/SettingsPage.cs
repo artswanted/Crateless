@@ -77,11 +77,10 @@ namespace GHelper.UI.Nebula.Pages
             c.Txt(NebulaText.T("Open", "Открыть"), 615, 518, c.F(12, FontStyle.Bold), c.IsHover("settings:log") ? th.Text : th.Accent, StringAlignment.Far);
             c.Hit(c.R(500, 498, 135, 30), "settings:log");
 
-            c.Txt(NebulaText.T("BIOS and driver updates", "Обновления BIOS и драйверов"), 256, 578, c.F(13), th.Text);
-            c.Txt(NebulaText.T("View", "Посмотреть"), 615, 579, c.F(12, FontStyle.Bold), c.IsHover("settings:updates") ? th.Text : th.Accent, StringAlignment.Far);
+            c.Txt(NebulaText.T("Updates", "Обновления"), 256, 578, c.F(13), th.Text);
+            c.Txt(NebulaText.T("Open", "Открыть"), 615, 579, c.F(12, FontStyle.Bold), c.IsHover("settings:updates") ? th.Text : th.Accent, StringAlignment.Far);
             c.Hit(c.R(500, 559, 135, 30), "settings:updates");
-
-            c.Button(256, 639, 359, 36, NebulaText.T("Check for app updates", "Проверить обновления приложения"), "settings:appupdate", primary: false);
+            c.Txt(NebulaText.T("Crateless, BIOS and drivers in one place.", "Crateless, BIOS и драйверы в одном месте."), 256, 600, c.F(10), th.Faint);
 
             // ---- classic extras --------------------------------------------------------------------
             c.Surface(236, 714, 818, 70);
@@ -164,8 +163,7 @@ namespace GHelper.UI.Nebula.Pages
                 case "settings:log":
                     try { Process.Start(new ProcessStartInfo(Logger.logFile) { UseShellExecute = true }); } catch { }
                     return true;
-                case "settings:updates": Program.settingsForm.UpdatesToggle(); return true;
-                case "settings:appupdate": Program.settingsForm.CheckAppUpdate(); return true;
+                case "settings:updates": form.ShowPage("updates"); return true;
                 case "settings:repo":
                     try { Process.Start(new ProcessStartInfo("https://github.com/artswanted/Crateless") { UseShellExecute = true }); } catch { }
                     return true;
