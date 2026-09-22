@@ -33,6 +33,8 @@ namespace GHelper.UI.Nebula
             public Image? ThumbImage;
             public bool ThumbLoading, ThumbFailed;
             public string LocalFile = "";
+            public bool LocalExists;
+            public Variant? BestVariant;
             public bool Downloading;
             public string Error = "";
         }
@@ -181,11 +183,12 @@ namespace GHelper.UI.Nebula
         /// <summary>Picks the desktop file closest to the primary screen's aspect ratio, largest first.</summary>
         public static Variant? Best(Item it)
         {
+            if (it.BestVariant is not null) return it.BestVariant;
             if (it.Desktop.Count == 0) return null;
             var b = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1200);
             float want = b.Width / (float)b.Height;
             // closest aspect ratio, then the smallest file that still covers the screen (8K+ originals are huge)
-            return it.Desktop
+            return it.BestVariant = it.Desktop
                 .OrderBy(v => v.Width > 0 && v.Height > 0 ? MathF.Round(Math.Abs(v.Width / (float)v.Height - want), 2) : 9f)
                 .ThenBy(v => v.Width >= b.Width ? 0 : 1)
                 .ThenBy(v => v.Width >= b.Width ? v.Width : -v.Width)
@@ -214,6 +217,7 @@ namespace GHelper.UI.Nebula
                     string path = Path.Combine(Folder, $"{safe} {v.Width}x{v.Height}{ext}");
                     await using (var fs = File.Create(path)) await resp.Content.CopyToAsync(fs);
                     it.LocalFile = path;
+                    it.LocalExists = true;
                     Logger.WriteLine("ROG wallpaper saved: " + path);
                     if (apply) AuraWallpaper.SetCustom(path);
                 }

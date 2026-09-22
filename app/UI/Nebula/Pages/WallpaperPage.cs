@@ -84,12 +84,15 @@ namespace GHelper.UI.Nebula.Pages
                 var it = items[i];
                 float cx = 236 + (i % Cols) * (CardW + Gap), cy = y + (i / Cols) * (CardH + Gap);
                 var card = c.R(cx, cy, CardW, CardH);
-                // only fetch thumbnails for cards that are actually on screen
-                if (c.G.VisibleClipBounds.IntersectsWith(card)) RogWallpapers.LoadThumb(it, Repaint);
+                // the gallery holds a hundred cards or more: leave the ones off screen alone, but
+                // still register their buttons so a partial repaint keeps every click region
+                bool shown = c.Vis(card);
+                if (shown) RogWallpapers.LoadThumb(it, Repaint);
                 c.Card(card, 12, th.Card, th.Line);
 
                 // thumbnail, cover-fit, clipped to the rounded top of the card
                 var tr = c.R(cx, cy, CardW, ThumbH);
+                if (shown)
                 using (var clip = NebulaCanvas.Rounded(card, c.S(12)))
                 {
                     var saved = c.G.Clip;
@@ -122,7 +125,9 @@ namespace GHelper.UI.Nebula.Pages
                 c.Txt(NebulaText.T($"{it.Downloads:N0} downloads", $"{it.Downloads:N0} загрузок"), cx + CardW - 16, cy + ThumbH + 46, c.F(10), th.Faint, StringAlignment.Far);
 
                 float by = cy + ThumbH + 60;
-                bool have = it.LocalFile.Length > 0 && File.Exists(it.LocalFile);
+                // File.Exists once per card per frame was a disk hit per visible card; check it only when the card is on screen
+                if (shown && it.LocalFile.Length > 0) it.LocalExists = File.Exists(it.LocalFile);
+                bool have = it.LocalFile.Length > 0 && it.LocalExists;
                 if (it.Downloading)
                     c.Txt(NebulaText.T("Downloading…", "Скачиваем…"), cx + 16, by + 21, c.F(11), th.Accent);
                 else if (it.Error.Length > 0)
