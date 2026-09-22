@@ -44,6 +44,7 @@ namespace GHelper.UI.Nebula
 
         // interaction
         private string hover = "";
+        private RectangleF hoverRect;
         private readonly ToolTip tip = new() { InitialDelay = 400, ReshowDelay = 200 };
         private string shownTip = "";
         private string dragId = "";
@@ -91,7 +92,7 @@ namespace GHelper.UI.Nebula
             refreshTimer.Tick += (_, _) => RefreshSensors(false);
             FormClosing += NebulaForm_FormClosing;
             VisibleChanged += NebulaForm_VisibleChanged;
-            MouseLeave += (_, _) => { SetHover(""); shownTip = ""; tip.Hide(this); };
+            MouseLeave += (_, _) => { SetHover("", RectangleF.Empty); shownTip = ""; tip.Hide(this); };
         }
 
         private void PlaceOnScreen()
@@ -260,7 +261,8 @@ namespace GHelper.UI.Nebula
             if (IsDisposed) return;
             NebulaSensors.Commit();
             page?.Refresh(false);
-            if (!host.Visible) Invalidate();
+            // nothing in the rail or the top bar changes with a sensor reading
+            if (!host.Visible) Invalidate(new Rectangle((int)S(RailW), (int)S(TopBarH), ClientSize.Width, ClientSize.Height));
         }
 
         // ---- painting ------------------------------------------------------------------------------
@@ -276,7 +278,7 @@ namespace GHelper.UI.Nebula
 
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.InterpolationMode = InterpolationMode.HighQualityBilinear;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
             canvas.Begin(g, k, theme, darkTheme, hover);
@@ -297,25 +299,32 @@ namespace GHelper.UI.Nebula
                 scroll = Math.Clamp(scroll, 0, maxScroll);
                 float off = S(scroll);
 
-                var saved = g.Save();
                 float ps = PageScale;
                 float clipTop = S(130), clipBottom = S(ViewBottom + 12);
+                // when only the rail changed, the page is outside the dirty region: skip it entirely
+                // and keep its click regions, instead of running a full page paint for nothing
+                var contentBox = Rectangle.Ceiling(new RectangleF(S(RailW), clipTop, ClientSize.Width - S(RailW), clipBottom - clipTop));
+                if (e.ClipRectangle.IntersectsWith(contentBox))
+                {
+                var saved = g.Save();
                 g.SetClip(new RectangleF(S(RailW) + 1, clipTop, ClientSize.Width, clipBottom - clipTop));
                 // page grid: shift right of the rail and shrink so 1394 still fits the window
                 g.TranslateTransform(PageShift, -off);
                 g.ScaleTransform(ps, 1f);
-                int before = canvas.Hits.Count;
+                canvas.BeginPageLayer();
                 try { page.Paint(canvas); }
                 catch (Exception ex) { Logger.WriteLine($"Nebula paint {page.Id}: {ex.Message}"); }
                 g.Restore(saved);
 
-                for (int i = before; i < canvas.Hits.Count; i++)
+                for (int i = 0; i < canvas.PageHits.Count; i++)
                 {
-                    var h = canvas.Hits[i];
+                    var h = canvas.PageHits[i];
                     var r = new RectangleF(h.rect.X * ps + PageShift, h.rect.Y - off, h.rect.Width * ps, h.rect.Height);
                     r = RectangleF.Intersect(r, new RectangleF(S(RailW) + 1, clipTop,
                         ClientSize.Width - S(RailW) - 1, clipBottom - clipTop));
-                    canvas.Hits[i] = (r, h.id, h.tip);
+                    canvas.PageHits[i] = (r, h.id, h.tip);
+                }
+                canvas.EndPageLayer();
                 }
 
                 if (maxScroll > 0)
@@ -443,16 +452,37 @@ namespace GHelper.UI.Nebula
         }
 
         // ---- interaction ---------------------------------------------------------------------------
-        private void SetHover(string id)
+        /// <summary>
+        /// Repainting the whole window on every hover change costs a full frame (tens of
+        /// milliseconds on a large screen) and did it up to twenty times a second while the mouse
+        /// moved, which left the window too busy to answer the caption buttons. Only the region
+        /// that actually changes appearance is invalidated: the row the cursor left and the one it
+        /// entered.
+        /// </summary>
+        private void SetHover(string id, RectangleF rect)
         {
             if (hover == id) return;
+            var before = hoverRect;
             hover = id;
+            hoverRect = rect;
             Cursor = id.Length > 0 ? Cursors.Hand : Cursors.Default;
-            Invalidate();
+            InvalidateArea(before);
+            InvalidateArea(rect);
+        }
+
+        /// <summary>Invalidates one design region, with a margin for antialiased edges.</summary>
+        private void InvalidateArea(RectangleF r)
+        {
+            if (r.Width <= 0 || r.Height <= 0) return;
+            var box = Rectangle.Ceiling(r);
+            box.Inflate(6, 6);
+            Invalidate(box);
         }
 
         private (string id, string tip, RectangleF rect) HitAt(Point p)
         {
+            foreach (var h in canvas.PageHits)
+                if (h.rect.Contains(p)) return (h.id, h.tip, h.rect);
             foreach (var h in canvas.Hits)
                 if (h.rect.Contains(p)) return (h.id, h.tip, h.rect);
             return ("", "", RectangleF.Empty);
@@ -466,8 +496,8 @@ namespace GHelper.UI.Nebula
                 Drag(e.Location, false);
                 return;
             }
-            var (id, t, _) = HitAt(e.Location);
-            SetHover(id);
+            var (id, t, rect) = HitAt(e.Location);
+            SetHover(id, rect);
             if (t != shownTip)
             {
                 shownTip = t;

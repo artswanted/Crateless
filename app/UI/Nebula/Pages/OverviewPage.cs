@@ -38,12 +38,23 @@ namespace GHelper.UI.Nebula.Pages
             PaintQuick(c);
         }
 
+        private static string? vramLabel;
+
+        /// <summary>Total VRAM never changes while the app runs, and asking the driver for it cost milliseconds on every repaint.</summary>
+        private static string VramLabel()
+        {
+            if (vramLabel is not null) return vramLabel;
+            try { var v = HardwareControl.GpuControl?.GetVramInfo(); if (v is { totalMb: > 0 }) vramLabel = $" · {Math.Round(v.Value.totalMb / 1024.0)} GB"; }
+            catch { }
+            return vramLabel ??= "";
+        }
+
         // ---- hero + devices ----------------------------------------------------------------------
         private void PaintHero(NebulaCanvas c)
         {
             var th = c.Theme;
             var box = c.R(124, 150, 596, 330);
-            var hero = NebulaAssets.HeroScaled((int)box.Width);
+            var hero = c.Vis(box) ? NebulaAssets.HeroScaled((int)box.Width) : null;
             if (hero is not null)
             {
                 float ratio = Math.Min(box.Width / hero.Width, box.Height / hero.Height);
@@ -63,9 +74,7 @@ namespace GHelper.UI.Nebula.Pages
             c.Txt(cpu, 422, 556, c.F(12), th.Muted, StringAlignment.Center);
             if (gpu.Length > 0)
             {
-                string vram = "";
-                try { var v = HardwareControl.GpuControl?.GetVramInfo(); if (v is { totalMb: > 0 }) vram = $" · {Math.Round(v.Value.totalMb / 1024.0)} GB"; } catch { }
-                c.Txt(gpu + vram, 422, 578, c.F(12), th.Muted, StringAlignment.Center);
+                c.Txt(gpu + VramLabel(), 422, 578, c.F(12), th.Muted, StringAlignment.Center);
             }
 
             bool connected = Program.acpi?.IsConnected() ?? false;
@@ -91,7 +100,7 @@ namespace GHelper.UI.Nebula.Pages
                 var d = devices[i];
                 var r = c.R(x, 664, 192, 46);
                 c.Card(r, 10, c.IsHover("overview:dev:" + i) ? th.Raised : th.Card, th.Line);
-                var thumb = NebulaAssets.Scaled(NebulaAssets.DeviceRender(d.DeviceType(), d.GetDisplayName()), (int)c.S(40));
+                var thumb = c.Vis(x + 6, 667, 40, 40) ? NebulaAssets.Scaled(NebulaAssets.DeviceRender(d.DeviceType(), d.GetDisplayName()), (int)c.S(40)) : null;
                 if (thumb is not null) c.G.DrawImage(thumb, c.S(x + 6), c.S(667), c.S(40), c.S(40));
                 else c.IconAt("mouse", x + 12, 675, 24, true);
                 string name = d.GetDisplayName();

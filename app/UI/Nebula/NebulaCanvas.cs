@@ -16,7 +16,13 @@ namespace GHelper.UI.Nebula
         public string Hover = "";
 
         /// <summary>Interactive regions collected during a paint pass: (rect, id, tooltip).</summary>
+        /// <summary>
+        /// Clickable regions, kept in two buckets so a repaint of one layer does not throw away the
+        /// other layer's regions: the shell can skip painting the page when only the rail changed.
+        /// </summary>
         public readonly List<(RectangleF rect, string id, string tip)> Hits = new();
+        public readonly List<(RectangleF rect, string id, string tip)> PageHits = new();
+        private bool pageLayer;
 
         private readonly Dictionary<string, Font> fonts = new();
         private static readonly string TextFamily = PickFamily("Segoe UI Variable Text", "Segoe UI");
@@ -35,6 +41,7 @@ namespace GHelper.UI.Nebula
         public void Begin(Graphics g, float k, NebulaTheme theme, bool dark, string hover)
         {
             G = g; K = k; Theme = theme; Dark = dark; Hover = hover;
+            pageLayer = false;
             Hits.Clear();
         }
 
@@ -42,7 +49,25 @@ namespace GHelper.UI.Nebula
         public float S(float v) => v * K;
         public RectangleF R(float x, float y, float w, float h) => new(S(x), S(y), S(w), S(h));
         public bool IsHover(string id) => Hover == id;
-        public void Hit(RectangleF r, string id, string tooltip = "") => Hits.Add((r, id, tooltip));
+
+        /// <summary>
+        /// True when the rect can actually land on screen with the current clip. A repaint of one
+        /// row asks GDI+ to clip everything else away, but laying the text out costs the same
+        /// whether or not a pixel is written, so the primitives skip the work themselves.
+        /// </summary>
+        public bool Vis(RectangleF r) => G.IsVisible(r);
+
+        public bool Vis(float x, float y, float w, float h) => G.IsVisible(R(x, y, w, h));
+        public void Hit(RectangleF r, string id, string tooltip = "") => (pageLayer ? PageHits : Hits).Add((r, id, tooltip));
+
+        /// <summary>Starts the page layer; its regions are kept apart from the shell's and cleared only when the page is repainted.</summary>
+        public void BeginPageLayer()
+        {
+            pageLayer = true;
+            PageHits.Clear();
+        }
+
+        public void EndPageLayer() => pageLayer = false;
 
         // ---- fonts / text ------------------------------------------------------------------------
         public Font F(float designPx, FontStyle style = FontStyle.Regular, bool display = false)
@@ -59,9 +84,9 @@ namespace GHelper.UI.Nebula
 
         public void Txt(string s, float x, float baseline, Font f, Color c, StringAlignment align = StringAlignment.Near)
         {
+            if (string.IsNullOrEmpty(s)) return;
             float ascent = f.Size * f.FontFamily.GetCellAscent(f.Style) / f.FontFamily.GetEmHeight(f.Style);
             float top = S(baseline) - ascent;
-            using var b = new SolidBrush(c);
             var fmt = align == StringAlignment.Far ? FmtRight : align == StringAlignment.Center ? FmtCenter : FmtLeft;
             const float w = 2000f;
             var rect = align switch
@@ -70,6 +95,8 @@ namespace GHelper.UI.Nebula
                 StringAlignment.Center => new RectangleF(S(x) - w / 2, top, w, f.Height * 1.5f),
                 _ => new RectangleF(S(x), top, w, f.Height * 1.5f),
             };
+            if (!G.IsVisible(rect)) return;
+            using var b = new SolidBrush(c);
             G.DrawString(s, f, b, rect, fmt);
         }
 
@@ -91,6 +118,7 @@ namespace GHelper.UI.Nebula
 
         public void Card(RectangleF r, float radius, Color fill, Color? stroke = null, float strokeWidth = 1f)
         {
+            if (!Vis(r)) return;
             using var path = Rounded(r, S(radius));
             using var b = new SolidBrush(fill);
             G.FillPath(b, path);
@@ -106,6 +134,7 @@ namespace GHelper.UI.Nebula
 
         public void IconAt(string name, float x, float y, float designSize, bool accent = false)
         {
+            if (!Vis(x, y, designSize, designSize)) return;
             int px = Math.Max(12, (int)Math.Round(designSize * K));
             var img = NebulaAssets.IconScaled(name, Dark, px);
             if (img is null) return;
@@ -169,16 +198,18 @@ namespace GHelper.UI.Nebula
         {
             t = Math.Clamp(t, 0f, 1f);
             var track = R(x, y, w, 4);
+            if (enabled) Hit(R(x - 8, y - 14, w + 16, 32), id);
+            if (!Vis(x - 8, y - 14, w + 16, 32)) return track;
             using (var b = new SolidBrush(Theme.Line)) G.FillRectangle(b, track);
             using (var b = new SolidBrush(enabled ? Theme.Accent : Theme.Faint)) G.FillRectangle(b, R(x, y, w * t, 4));
             float kx = x + w * t - 7;
             Card(R(kx, y - 5, 14, 14), 7, enabled ? Theme.Accent : Theme.Faint);
-            if (enabled) Hit(R(x - 8, y - 14, w + 16, 32), id);
             return track;
         }
 
         public void Bar(float x, float y, float w, float h, float t, Color color)
         {
+            if (!Vis(x, y, w, h)) return;
             using (var b = new SolidBrush(Theme.Line)) G.FillRectangle(b, R(x, y, w, h));
             using (var b = new SolidBrush(color)) G.FillRectangle(b, R(x, y, w * Math.Clamp(t, 0, 1), h));
         }
@@ -194,6 +225,7 @@ namespace GHelper.UI.Nebula
 
         public void Sparkline(RectangleF r, IReadOnlyList<float> data, int capacity, Color color, float min = 30, float max = 100)
         {
+            if (!Vis(r)) return;
             using (var pen = new Pen(Theme.Line, 1f)) G.DrawLine(pen, r.X, r.Bottom, r.Right, r.Bottom);
             if (data.Count < 2) return;
 
@@ -224,6 +256,7 @@ namespace GHelper.UI.Nebula
         public void Ring(float cx, float cy, float radius, float t, Color color, float thickness = 10)
         {
             var r = R(cx - radius, cy - radius, radius * 2, radius * 2);
+            if (!Vis(r)) return;
             using (var pen = new Pen(Theme.Line, S(thickness)) { StartCap = LineCap.Round, EndCap = LineCap.Round })
                 G.DrawArc(pen, r, 135, 270);
             if (t > 0)
@@ -234,6 +267,7 @@ namespace GHelper.UI.Nebula
         /// <summary>Blends a raster's black background into the page background at the edges.</summary>
         public void FadeEdges(RectangleF r, float band)
         {
+            if (!Vis(r)) return;
             Color bg = Theme.Bg, clear = Color.FromArgb(0, Theme.Bg);
             band = Math.Min(band, Math.Min(r.Width, r.Height) / 3);
             var top = new RectangleF(r.X, r.Y, r.Width, band);
