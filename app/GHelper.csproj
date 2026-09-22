@@ -75,8 +75,11 @@
     <EmbeddedResource Include="Pawn\RyzenSMU.bin">
       <LogicalName>$(AssemblyName).RyzenSMU.bin</LogicalName>
     </EmbeddedResource>
+    <!-- WithCulture=false: MSBuild reads "strings.ru.json" as a culture-specific resource and would
+         put it in a satellite assembly, where the main assembly never finds it at run time. -->
     <EmbeddedResource Include="Resources\Nebula\*.png;Resources\Nebula\*.jpg;Resources\Nebula\*.json">
       <LogicalName>Nebula.%(Filename)%(Extension)</LogicalName>
+      <WithCulture>false</WithCulture>
     </EmbeddedResource>
     <EmbeddedResource Include="Pawn\IntelMSR.bin">
       <LogicalName>$(AssemblyName).IntelMSR.bin</LogicalName>

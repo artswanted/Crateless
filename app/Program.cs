@@ -62,14 +62,17 @@ namespace GHelper
             string language = AppConfig.GetString("language");
             try
             {
+                CultureInfo picked;
                 if (language != null && language.Length > 0)
-                    Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                    picked = CultureInfo.GetCultureInfo(language);
                 else
                 {
-                    var culture = CultureInfo.CurrentUICulture;
-                    if (culture.ToString() == "kr") culture = CultureInfo.GetCultureInfo("ko");
-                    Thread.CurrentThread.CurrentUICulture = culture;
+                    picked = CultureInfo.CurrentUICulture;
+                    if (picked.ToString() == "kr") picked = CultureInfo.GetCultureInfo("ko");
                 }
+                Thread.CurrentThread.CurrentUICulture = picked;
+                // background threads read resources too, and in .NET they do not inherit this on their own
+                CultureInfo.DefaultThreadCurrentUICulture = picked;
             } catch
             {
                 Logger.WriteLine("Unknown Language: " + language);
