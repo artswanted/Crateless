@@ -275,8 +275,8 @@ namespace GHelper.UI.Nebula.Pages
                 c.Card(r, 12, active ? th.AccentBg : c.IsHover("mode:" + mode) ? th.Raised : th.Card, active ? th.Accent : th.Line);
                 if (active) using (var b = new SolidBrush(th.Accent)) c.G.FillRectangle(b, c.R(x + 12, 846, w - 24, 2));
                 c.IconAt(IconFor(mode), x + 15, 790, 24, active);
-                c.Txt(Modes.GetName(mode), x + 49, 806, c.F(15, FontStyle.Bold), active ? th.Accent : th.Text);
-                c.Txt(HintFor(mode), x + 15, 834, c.F(10), th.Muted);
+                c.TxtFit(Modes.GetName(mode), x + 49, 806, w - 60, 15, FontStyle.Bold, active ? th.Accent : th.Text);
+                c.TxtFit(HintFor(mode), x + 15, 834, w - 26, 10, FontStyle.Regular, th.Muted);
                 c.Hit(r, "mode:" + mode);
                 x += w + 13;
             }
@@ -369,12 +369,85 @@ namespace GHelper.UI.Nebula.Pages
             {
                 case "overview:fans": form.ShowPage("fan"); return true;
                 case "overview:devices": form.ShowPage("mouse"); return true;
-                case "quick:gpu": form.ShowPage("gpu"); return true;
-                case "quick:screen": form.ShowPage("display"); return true;
-                case "quick:battery": form.ShowPage("battery"); return true;
-                case "quick:light": form.ShowPage("light"); return true;
+                case "quick:gpu": QuickGpu(form, at); return true;
+                case "quick:screen": QuickScreen(form, at); return true;
+                case "quick:battery": QuickBattery(form, at); return true;
+                case "quick:light": QuickLight(form, at); return true;
             }
             return false;
+        }
+
+        // ---- quick access ---------------------------------------------------------------------------
+        // These cards used to jump to the matching section, which is the long way round for a setting
+        // the user can see right there. Each one now opens its choices, with the section last.
+        private static (string, bool, Action) OpenSection(NebulaForm form, string page, string name)
+            => (name + "  ↗", false, (Action)(() => form.ShowPage(page)));
+
+        private static void QuickGpu(NebulaForm form, Point at)
+        {
+            int mode = AppConfig.Get("gpu_mode");
+            bool auto = AppConfig.Is("gpu_auto");
+            bool mux = Program.settingsForm.isMuxGpu;
+            var items = new List<(string, bool, Action)>
+            {
+                (NebulaText.Eco, !auto && mode == AsusACPI.GPUModeEco, () => Program.gpuControl.SetGPUMode(AsusACPI.GPUModeEco)),
+                (NebulaText.Standard, !auto && mode == AsusACPI.GPUModeStandard, () => Program.gpuControl.SetGPUMode(AsusACPI.GPUModeStandard)),
+            };
+            if (mux) items.Add((NebulaText.Ultimate, !auto && mode == AsusACPI.GPUModeUltimate, () => Program.gpuControl.SetGPUMode(AsusACPI.GPUModeUltimate)));
+            items.Add((NebulaText.Optimized, auto, () =>
+            {
+                AppConfig.Set("gpu_auto", auto ? 0 : 1);
+                Program.settingsForm.VisualiseGPUMode();
+                Program.gpuControl.AutoGPUMode(true);
+            }));
+            items.Add(OpenSection(form, "gpu", NebulaText.RailGpu));
+            Menu(form, at, items);
+        }
+
+        private static void QuickScreen(NebulaForm form, Point at)
+        {
+            int frequency = AppConfig.Get("frequency", -1);
+            int max = AppConfig.Get("max_frequency", 0);
+            int min = Display.ScreenControl.MIN_RATE;
+            bool auto = AppConfig.Is("screen_auto");
+            string hz = NebulaText.T("Hz", "Гц");
+            var items = new List<(string, bool, Action)>
+            {
+                (NebulaText.T("Auto", "Авто"), auto, () => { Display.ScreenControl.SetAutoRefresh(1); Display.ScreenControl.AutoScreen(); }),
+                ($"{min} {hz}", !auto && frequency == min, () => { Display.ScreenControl.SetAutoRefresh(0); Display.ScreenControl.SetScreen(min, 0); }),
+            };
+            if (max > min)
+                items.Add(($"{max} {hz}", !auto && frequency > min, () => { Display.ScreenControl.SetAutoRefresh(0); Display.ScreenControl.SetScreen(Display.ScreenControl.MAX_REFRESH, 1); }));
+            items.Add(OpenSection(form, "display", NebulaText.RailDisplay));
+            Menu(form, at, items);
+        }
+
+        private static void QuickBattery(NebulaForm form, Point at)
+        {
+            int limit = Math.Clamp(AppConfig.Get("charge_limit", 100), 40, 100);
+            var items = new List<(string, bool, Action)>();
+            foreach (int v in new[] { 60, 80, 100 })
+                items.Add(($"{v}%", limit == v, () => Battery.BatteryControl.SetBatteryChargeLimit(v)));
+            items.Add((Battery.BatteryControl.chargeFull
+                        ? NebulaText.T("Cancel", "Отменить") + ": " + NebulaText.T("Charge to 100% once", "Разово зарядить до 100%")
+                        : NebulaText.T("Charge to 100% once", "Разово зарядить до 100%"),
+                       Battery.BatteryControl.chargeFull, Battery.BatteryControl.ToggleBatteryLimitFull));
+            items.Add(OpenSection(form, "battery", NebulaText.RailBattery));
+            Menu(form, at, items);
+        }
+
+        private static void QuickLight(NebulaForm form, Point at)
+        {
+            var items = new List<(string, bool, Action)>();
+            try
+            {
+                var cur = (AuraMode)AppConfig.Get("aura_mode", (int)AuraMode.AuraStatic);
+                foreach (var m in Aura.GetModes())
+                    items.Add((m.Value, m.Key == cur, () => { AppConfig.Set("aura_mode", (int)m.Key); Program.settingsForm.SetAura(); }));
+            }
+            catch (Exception ex) { Logger.WriteLine("Nebula quick light: " + ex.Message); }
+            items.Add(OpenSection(form, "light", NebulaText.RailLight));
+            Menu(form, at, items);
         }
     }
 }

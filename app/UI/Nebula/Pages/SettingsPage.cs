@@ -11,44 +11,6 @@ namespace GHelper.UI.Nebula.Pages
         public override string Title => NebulaText.T("Settings", "Настройки");
         public override string Subtitle => NebulaText.T("Crateless works the way you like.", "Crateless работает так, как удобно тебе.");
 
-        /// <summary>Every language the app ships, as culture codes. "" means "follow Windows".</summary>
-        private static readonly string[] Languages =
-        {
-            "", "en", "ar", "cs-CZ", "da", "de", "es", "fr", "hu", "id", "it", "ja", "ko", "lt", "pl",
-            "pt-BR", "pt-PT", "ro", "ru", "tr", "uk", "vi", "zh-CN", "zh-TW",
-        };
-
-        /// <summary>The entry that matches Windows, or null when this system's language is not one of ours.</summary>
-        private static string? SystemLanguage()
-        {
-            var ui = CultureInfo.InstalledUICulture;
-            foreach (var l in Languages)
-                if (l.Length > 0 && string.Equals(l, ui.Name, StringComparison.OrdinalIgnoreCase)) return l;
-            foreach (var l in Languages)
-                if (l.Length > 0 && string.Equals(l.Split('-')[0], ui.TwoLetterISOLanguageName, StringComparison.OrdinalIgnoreCase)) return l;
-            return null;
-        }
-
-        /// <summary>Menu order: follow Windows, then this system's language, then English, then the rest by name.</summary>
-        private static List<string> MenuOrder()
-        {
-            var sys = SystemLanguage();
-            var head = new List<string> { "" };
-            if (sys is not null && sys != "en") head.Add(sys);
-            head.Add("en");
-            head.AddRange(Languages.Where(l => l.Length > 0 && !head.Contains(l)).OrderBy(LanguageName, StringComparer.InvariantCulture));
-            return head;
-        }
-
-        private static string FlagName(string code) => code.Length == 0 ? "system" : code switch
-        {
-            "cs-CZ" => "cs",
-            _ => code,
-        };
-
-        private static Image? Flag(NebulaCanvas c, string code, float designWidth = 20)
-            => NebulaAssets.Scaled("flag-" + FlagName(code), Math.Max(8, (int)c.S(designWidth)));
-
         private bool startup;
         private int services = -1;
         private bool admin;
@@ -73,27 +35,6 @@ namespace GHelper.UI.Nebula.Pages
             };
         }
 
-        private static string LanguageName(string code)
-        {
-            if (code.Length == 0)
-            {
-                string sys = SystemLanguage() is string s ? LanguageName(s) : "English";
-                return NebulaText.T("System", "Системный") + " · " + sys;
-            }
-            try
-            {
-                var name = CultureInfo.GetCultureInfo(code).NativeName;
-                if (name.Length > 0) name = char.ToUpper(name[0], CultureInfo.InvariantCulture) + name[1..];
-                // "português (Brasil)" keeps the country because there are two of them; "čeština (Česko)" does not need one
-                int bracket = name.IndexOf(" (", StringComparison.Ordinal);
-                string two = code.Split('-')[0];
-                bool severalVariants = Languages.Count(l => l.Length > 0 && l.Split('-')[0] == two) > 1;
-                if (bracket > 0 && !severalVariants) name = name[..bracket];
-                return name;
-            }
-            catch { return code; }
-        }
-
         public override void Paint(NebulaCanvas c)
         {
             var th = c.Theme;
@@ -102,11 +43,11 @@ namespace GHelper.UI.Nebula.Pages
             c.Surface(236, 139, 818, 250);
             c.Txt(NebulaText.T("Application", "Приложение"), 256, 169, c.F(15, FontStyle.Bold), th.Text);
             c.ValueRow(256, 206, 778, NebulaText.T("Theme", "Тема"), ThemeName(), "settings:theme");
-            string langCode = AppConfig.GetString("language") ?? "";
-            string langName = LanguageName(langCode);
+            string langCode = NebulaLang.Current;
+            string langName = NebulaLang.Name(langCode);
             var vf = c.F(12, FontStyle.Bold);
             float lw = c.TextWidth(langName + "  ⌄", vf);
-            var flag = Flag(c, langCode);
+            var flag = NebulaLang.Flag(langCode, (int)c.S(20));
             if (flag is not null) c.G.DrawImage(flag, c.S(256 + 778 - lw - 28), c.S(265 - 11), flag.Width, flag.Height);
             c.ValueRow(256, 265, 778, NebulaText.T("Language", "Язык"), langName, "settings:language");
             c.Txt(NebulaText.T("Start with Windows", "Запускать вместе с Windows"), 256, 341, c.F(13), th.Text);
@@ -184,15 +125,8 @@ namespace GHelper.UI.Nebula.Pages
                     return true;
                 }
                 case "settings:language":
-                {
-                    string cur = AppConfig.GetString("language") ?? "";
-                    Menu(form, at, MenuOrder().Select(l => (LanguageName(l), cur == l, NebulaAssets.Scaled("flag-" + FlagName(l), 20), (Action)(() =>
-                    {
-                        AppConfig.Set("language", l);
-                        MessageBox.Show(form, NebulaText.T("The language changes after Crateless restarts.", "Язык сменится после перезапуска Crateless."), "Crateless");
-                    }))));
+                    Menu(form, at, NebulaLang.MenuItems(() => form.Invalidate()));
                     return true;
-                }
                 case "settings:startup":
                     if (startup) Startup.UnSchedule(); else Startup.Schedule();
                     startup = !startup;

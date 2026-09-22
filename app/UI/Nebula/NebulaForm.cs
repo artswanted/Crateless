@@ -372,6 +372,15 @@ namespace GHelper.UI.Nebula
 
             // compact view switch, top-right of the top bar
             {
+                // quick language switch: the flag of the language in use, next to the compact switch
+                float lx = ClientSize.Width / k - 104;
+                var lr = R(lx, 6, 40, 31);
+                bool lhv = hover == "rail:lang";
+                c.Card(lr, 8, lhv ? theme.Line : theme.Raised, lhv ? theme.Accent : theme.Line);
+                var flag = NebulaLang.Flag(NebulaLang.Current, (int)S(22));
+                if (flag is not null) c.G.DrawImage(flag, S(lx + 9), S(14.5f), flag.Width, flag.Height);
+                c.Hit(lr, "rail:lang", NebulaText.T("Language", "Язык") + ": " + NebulaLang.Name(NebulaLang.Current));
+
                 // the compact switch used to appear only under the cursor; it now always reads as a button
                 float cx = ClientSize.Width / k - 52;
                 var cr = R(cx, 6, 40, 31);
@@ -589,6 +598,19 @@ namespace GHelper.UI.Nebula
                     AppConfig.Set("nebula_rail", railExpanded ? 1 : 0);
                     LayoutHost();
                     Invalidate();
+                    return;
+                }
+                if (id == "rail:lang")
+                {
+                    var menu = new ContextMenuStrip { ShowImageMargin = true, ImageScalingSize = new Size(20, 14) };
+                    foreach (var (text, isChecked, image, action) in NebulaLang.MenuItems(Invalidate))
+                    {
+                        var item = new ToolStripMenuItem(text) { Checked = isChecked, Image = image, ImageScaling = ToolStripItemImageScaling.None };
+                        if (isChecked) item.Font = new Font(item.Font, FontStyle.Bold);
+                        item.Click += (_, _) => { try { action(); } catch (Exception ex) { Logger.WriteLine("Nebula language: " + ex.Message); } };
+                        menu.Items.Add(item);
+                    }
+                    menu.Show(this, e.Location);
                     return;
                 }
                 if (id == "rail:updatechip") { SetPage("updates"); return; }

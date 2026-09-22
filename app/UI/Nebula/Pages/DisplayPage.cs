@@ -64,6 +64,15 @@ namespace GHelper.UI.Nebula.Pages
 
             c.Txt(NebulaText.Tf("Auto: {0} Hz on AC, {1} Hz on battery.", "Авто: {0} Гц от сети, {1} Гц от батареи.", max, min), 256, 301, c.F(11), th.Faint);
 
+            // ASUS Smart Display Control changes the rate behind our back on every mode switch
+            int asusFlag = ScreenControl.GetAsusRefreshFlag();
+            if (asusFlag == 1)
+            {
+                c.Txt("⚠ " + NebulaText.T("ASUS Smart Display Control also switches the refresh rate and resets it to 60 Hz when the performance mode changes.",
+                                          "ASUS Smart Display Control тоже переключает частоту и сбрасывает её на 60 Гц при смене режима."), 256, 325, c.F(11), th.Warning);
+                c.Button(256, 336, 300, 32, NebulaText.T("Turn the ASUS switching off", "Отключить переключение ASUS"), "display:asusrefresh", primary: false);
+            }
+
             // ---- picture ------------------------------------------------------------------------
             c.Surface(236, 337, 399, 361);
             c.Txt(NebulaText.T("Picture", "Изображение"), 256, 367, c.F(15, FontStyle.Bold), th.Text);
@@ -209,6 +218,10 @@ namespace GHelper.UI.Nebula.Pages
                 case "display:max":
                     ScreenControl.SetAutoRefresh(0);
                     ScreenControl.SetScreen(ScreenControl.MAX_REFRESH, 1);
+                    return true;
+                case "display:asusrefresh":
+                    if (!ScreenControl.SetAsusRefreshFlag(0))
+                        MessageBox.Show(form, NebulaText.T("This needs Crateless to run as administrator.", "Для этого Crateless должен быть запущен от администратора."), "Crateless");
                     return true;
                 case "display:overdrive":
                     AppConfig.Set("no_overdrive", AppConfig.IsNoOverdrive() ? 0 : 1);

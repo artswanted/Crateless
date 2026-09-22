@@ -19,7 +19,10 @@ namespace GHelper.UI.Nebula
 
         // Translations live in Resources/Nebula/strings.<culture>.json (English text is the key).
         // Lookup order: exact culture (pt-BR), language (pt), then the inline RU for ru/uk/be, then English.
-        private static readonly Lazy<Dictionary<string, string>?> table = new(LoadTable);
+        private static Lazy<Dictionary<string, string>?> table = new(LoadTable);
+
+        /// <summary>Drops the loaded table so the next lookup reads the one for the current culture.</summary>
+        public static void Reload() => table = new Lazy<Dictionary<string, string>?>(LoadTable);
 
         /// <summary>A language with several tables needs one of them picked when Windows only says "pt" or "zh".</summary>
         private static readonly Dictionary<string, string> Defaults = new()

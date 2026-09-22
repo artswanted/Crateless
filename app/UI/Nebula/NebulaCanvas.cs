@@ -100,6 +100,19 @@ namespace GHelper.UI.Nebula
             G.DrawString(s, f, b, rect, fmt);
         }
 
+        /// <summary>
+        /// Draws text that has to stay inside a box, shrinking the type until it does. Translations
+        /// are longer than the English they were laid out for, and a mode button cannot grow.
+        /// </summary>
+        public void TxtFit(string s, float x, float baseline, float maxWidth, float designPx, FontStyle style, Color c, StringAlignment align = StringAlignment.Near, float minPx = 9f, bool display = false)
+        {
+            if (string.IsNullOrEmpty(s)) return;
+            var f = F(designPx, style, display);
+            for (float px = designPx; px > minPx && TextWidth(s, f) > maxWidth; px -= 0.5f)
+                f = F(px, style, display);
+            Txt(s, x, baseline, f, c, align);
+        }
+
         /// <summary>Text width in design px.</summary>
         public float TextWidth(string s, Font f) => G.MeasureString(s, f, 4000, FmtLeft).Width / K;
 
@@ -167,7 +180,7 @@ namespace GHelper.UI.Nebula
             Color fill = selected ? Theme.Accent : hv ? Theme.Line : Theme.Raised;
             Color fore = selected ? Theme.OnAccent : enabled ? Theme.Text : Theme.Faint;
             Card(r, 8, fill);
-            Txt(text, x + w / 2, y + h / 2 + 4.5f, F(12, FontStyle.Bold), fore, StringAlignment.Center);
+            TxtFit(text, x + w / 2, y + h / 2 + 4.5f, w - 16, 12, FontStyle.Bold, fore, StringAlignment.Center);
             if (enabled) Hit(r, id);
         }
 
@@ -179,7 +192,7 @@ namespace GHelper.UI.Nebula
             Color fill = !enabled ? Theme.Raised : primary ? (hv ? Theme.Text : Theme.Accent) : (hv ? Theme.Line : Theme.Raised);
             Color fore = !enabled ? Theme.Faint : primary ? Theme.OnAccent : Theme.Text;
             Card(r, 8, fill);
-            Txt(text, x + w / 2, y + h / 2 + 4.5f, F(12, FontStyle.Bold), fore, StringAlignment.Center);
+            TxtFit(text, x + w / 2, y + h / 2 + 4.5f, w - 16, 12, FontStyle.Bold, fore, StringAlignment.Center);
             if (enabled) Hit(r, id);
         }
 

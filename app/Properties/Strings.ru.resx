@@ -277,7 +277,7 @@
     <value>Тайм-аут подсветки от сети</value>
   </data>
   <data name="Balanced" xml:space="preserve">
-    <value>Сбалансированный</value>
+    <value>Баланс</value>
   </data>
   <data name="Battery" xml:space="preserve">
     <value>Батарея</value>

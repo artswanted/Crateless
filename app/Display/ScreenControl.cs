@@ -38,19 +38,51 @@ namespace GHelper.Display
             if (auto == 0) SetAsusRefreshFlag(0);
         }
 
-        public static void SetAsusRefreshFlag(int value)
+        private const string SmartDisplayKey = @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{8714A8D1-0F08-4681-9DF6-A8C4607A58B4}";
+
+        /// <summary>
+        /// ASUS Smart Display Control drops the panel to 60 Hz on its own when the performance mode
+        /// or the power source changes. Reads its switch; -1 when the component is not installed.
+        /// </summary>
+        public static int GetAsusRefreshFlag()
         {
-            if (!ProcessHelper.IsUserAdministrator()) return;
-            const string keyPath = @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{8714A8D1-0F08-4681-9DF6-A8C4607A58B4}";
             try
             {
-                using var key = Registry.LocalMachine.OpenSubKey(keyPath, writable: true);
-                key?.SetValue("RefreshFlag", value, RegistryValueKind.DWord);
+                using var key = Registry.LocalMachine.OpenSubKey(SmartDisplayKey);
+                if (key is null) return -1;
+                return key.GetValue("RefreshFlag") is int v ? v : -1;
+            }
+            catch { return -1; }
+        }
+
+        public static bool SetAsusRefreshFlag(int value)
+        {
+            if (!ProcessHelper.IsUserAdministrator()) return false;
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(SmartDisplayKey, writable: true);
+                if (key is null) return false;
+                key.SetValue("RefreshFlag", value, RegistryValueKind.DWord);
+                Logger.WriteLine("ASUS Smart Display RefreshFlag = " + value);
+                return true;
             }
             catch (Exception ex)
             {
                 Logger.WriteLine($"Failed to set RefreshFlag: {ex.Message}");
+                return false;
             }
+        }
+
+        /// <summary>
+        /// Keeps the two automations from fighting: with our own auto refresh off, the ASUS one has
+        /// to be off too, or switching performance mode silently resets the panel to 60 Hz.
+        /// </summary>
+        public static void CheckAsusRefreshFlag()
+        {
+            if (AppConfig.Is("screen_auto")) return;
+            if (GetAsusRefreshFlag() != 1) return;
+            if (!SetAsusRefreshFlag(0))
+                Logger.WriteLine("ASUS Smart Display Control still switches the refresh rate; turning it off needs administrator rights");
         }
 
         public static void ToggleScreenRate()
@@ -236,6 +268,7 @@ namespace GHelper.Display
             else maxFrequency = AppConfig.Get("max_frequency");
 
             bool screenAuto = AppConfig.Is("screen_auto");
+            CheckAsusRefreshFlag();
             bool overdriveSetting = Program.acpi.IsOverdriveSupported() && !AppConfig.IsNoOverdrive();
 
             int overdrive = overdriveSetting ? Program.acpi.DeviceGet(AsusACPI.ScreenOverdrive) : 0;
