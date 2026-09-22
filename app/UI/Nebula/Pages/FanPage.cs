@@ -22,7 +22,6 @@ namespace GHelper.UI.Nebula.Pages
         private readonly Dictionary<AsusFan, byte[]> curves = new();   // draft: 8 temps + 8 percents
         private AsusFan current = AsusFan.CPU;
         private int selected = -1;
-        private bool dragging;
         private bool dirty;
         private bool clamp = AppConfig.Is("fan_clamp");
 
@@ -252,7 +251,6 @@ namespace GHelper.UI.Nebula.Pages
         {
             if (!curves.TryGetValue(current, out var cur) || index < 0 || index >= Points) return;
             selected = index;
-            dragging = true;
 
             double dx = Math.Clamp(TempMin + tx * (TempMax - TempMin), TempMin, TempMax);
             double dy = Math.Clamp((1 - ty) * FanMax, 0, FanMax);
@@ -297,7 +295,6 @@ namespace GHelper.UI.Nebula.Pages
 
         public override void Drag(string id, float t, bool done)
         {
-            if (done) dragging = false;
         }
 
         public override bool Click(string id, Point at, NebulaForm form)

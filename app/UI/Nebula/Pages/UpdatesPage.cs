@@ -13,7 +13,7 @@ namespace GHelper.UI.Nebula.Pages
         private CancellationTokenSource cts = new();
         private List<UpdatesController.DriverUpdate> bios = new();
         private List<UpdatesController.DriverUpdate> drivers = new();
-        private bool loadingBios, loadingDrivers, biosDone, driversDone;
+        private bool loadingBios, loadingDrivers, biosDone;
         private string error = "";
         private string model = "", biosVersion = "", serial = "";
         private long lastLoad;
@@ -36,7 +36,7 @@ namespace GHelper.UI.Nebula.Pages
             var token = cts.Token;
             error = "";
             bios = new(); drivers = new();
-            biosDone = driversDone = false;
+            biosDone = false;
             loadingBios = loadingDrivers = true;
 
             string rog = AppConfig.IsROG() ? "&systemCode=rog" : "";
@@ -44,7 +44,7 @@ namespace GHelper.UI.Nebula.Pages
             string driversUrl = $"https://rog.asus.com/support/webapi/product/GetPDDrivers?website=global&model={model}&cpu={model}&osid=52{rog}";
 
             Fetch(biosUrl, 1, token, list => { bios = list; loadingBios = false; biosDone = true; });
-            Fetch(driversUrl, 0, token, list => { drivers = list; loadingDrivers = false; driversDone = true; });
+            Fetch(driversUrl, 0, token, list => { drivers = list; loadingDrivers = false; });
             Task.Run(() => { try { serial = controller.GetSerialNumber(); } catch { } Repaint(); });
         }
 
@@ -66,7 +66,7 @@ namespace GHelper.UI.Nebula.Pages
                 catch (Exception ex)
                 {
                     error = ex.Message;
-                    if (type == 1) { loadingBios = false; biosDone = true; } else { loadingDrivers = false; driversDone = true; }
+                    if (type == 1) { loadingBios = false; biosDone = true; } else loadingDrivers = false;
                     Logger.WriteLine("Updates: " + ex.Message);
                 }
                 Repaint();

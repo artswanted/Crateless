@@ -13,9 +13,10 @@ want a signed build that thousands of people already run, use G-Helper. Crateles
 people who want the same backend with a different front.
 
 Status: early. Works on the author's machine (Zephyrus G16 GA605WI). Release builds are
-not code-signed, so SmartScreen will complain on first run. The new UI ships in English,
-Russian and Ukrainian; other languages fall back to English for the new screens. Translations
-are plain JSON files in `app/Resources/Nebula/strings.<culture>.json`, English text is the key.
+not code-signed, so SmartScreen will complain on first run. The interface speaks 22
+languages and follows Windows by default; the flag in the title bar switches on the spot.
+Translations are plain JSON files in `app/Resources/Nebula/strings.<culture>.json` with the
+English text as the key, so a new language is one file.
 
 Download: [Releases](https://github.com/artswanted/Crateless/releases). `Crateless.exe`
 needs the .NET 10 Desktop Runtime, `Crateless-standalone.exe` does not.
@@ -52,8 +53,12 @@ compact fly-out from the tray. Nothing else changes.
   reduction, ANC, power settings inline; bindings and per-key RGB in the device window.
 - Charge limit, one-time full charge, battery health.
 - Keyboard lighting, AniMe Matrix and Slash.
+- Wallpapers: the official ROG gallery with previews inside the window and one-click
+  download, your own picture, or a still wallpaper drawn in the current Aura colour.
 - Hotkeys and the M-keys, Fn lock.
-- In-game overlay, BIOS and driver update check against the ASUS site.
+- In-game overlay.
+- Updates in one place: BIOS and drivers for this exact model from the ASUS site, grouped
+  by whether they are newer than what is installed, plus new releases of Crateless itself.
 
 ## Interface
 
@@ -71,6 +76,10 @@ and scaled to the screen) and a compact fly-out next to the tray. The tray icon 
 whichever one you used last. Device illustrations are our own; if you have Armoury Crate
 or MyASUS installed there is a switch in Settings to use the ASUS render found on disk
 instead, it is never bundled.
+
+The window repaints only the part that changed, so moving the mouse across it costs about
+half a millisecond rather than a full frame. That matters on a large screen, where a full
+frame is tens of milliseconds and the window stops answering its own title bar.
 
 ## Hardware
 
@@ -123,8 +132,10 @@ the Linux kernel, NvAPIWrapper, Starlight, UXTU, PawnIO, asusctl and OpenRGB.
 
 ## Privacy
 
-No telemetry. Outbound requests: the update check against this repo's GitHub releases,
-and BIOS/driver lookups on asus.com when you open that section.
+No telemetry. Outbound requests, all of them started by you or by opening a section:
+new releases of Crateless from this repo's GitHub releases, BIOS and driver lookups on
+asus.com, and the ROG wallpaper gallery (`api-rog.asus.com` for the list,
+`dlcdnwebimgs.asus.com` for previews and files) while the wallpaper section is open.
 
 ## License and trademarks
 
