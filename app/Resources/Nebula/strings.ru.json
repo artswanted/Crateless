@@ -418,7 +418,7 @@
  "Restore previous": "Вернуть прежние",
  "Preview": "Предпросмотр",
  "Choose a wallpaper": "Выберите обои",
- "Update available": "Есть обновление",
+ "Update available": "Доступно обновление",
  "Up to date": "Актуальная",
  "Updates available": "Есть обновления",
  "Installed and current": "Установлено, актуально",
@@ -438,5 +438,9 @@
  "OK": "ОК",
  "absent": "нет железа",
  "installed ": "стоит ",
- "site ": "на сайте "
+ "site ": "на сайте ",
+ "Open the updates page": "Открыть страницу обновлений",
+ "Last checked": "Последняя проверка",
+ "never": "ещё не проверяли",
+ "Checking…": "Проверяем…"
 }

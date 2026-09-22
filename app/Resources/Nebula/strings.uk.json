@@ -437,7 +437,7 @@
  "Show": "Показати",
  "Turning it off restores the wallpaper you had before. The original ASUS Aura packs only exist inside Armoury Crate and cannot be downloaded separately.": "Після вимкнення повертаються попередні шпалери. Оригінальні Aura-паки ASUS існують лише всередині Armoury Crate і окремо не завантажуються.",
  "All": "Усі",
- "Update available": "Є оновлення",
+ "Update available": "Доступне оновлення",
  "Up to date": "Актуальна",
  "Updates available": "Є оновлення",
  "Installed and current": "Встановлено, актуально",
@@ -457,5 +457,9 @@
  "OK": "ОК",
  "absent": "немає заліза",
  "installed ": "стоїть ",
- "site ": "на сайті "
+ "site ": "на сайті ",
+ "Open the updates page": "Відкрити сторінку оновлень",
+ "Last checked": "Остання перевірка",
+ "never": "ще не перевіряли",
+ "Checking…": "Перевіряємо…"
 }

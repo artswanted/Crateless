@@ -13,12 +13,72 @@ namespace GHelper.AutoUpdate
         SettingsForm settings;
 
         public string versionUrl = "https://github.com/artswanted/Crateless/releases";
-        public bool update = false;
-        public bool checkedOnce = false;
-        public string latestTag = "";
+        public bool update { get => UpdateAvailable; set => UpdateAvailable = value; }
+        public bool checkedOnce { get => Checked; set => Checked = value; }
+        public string latestTag { get => LatestTag; set => LatestTag = value; }
+
+        /// <summary>Result of the last release check, shared with the Nebula shell and kept in the config between runs.</summary>
+        public static bool UpdateAvailable;
+        public static bool Checked;
+        public static string LatestTag = "";
+        public static string LatestUrl = "";
+        public static DateTime LastCheck = DateTime.MinValue;
+        public static bool Checking;
+
+        public static string AppVersion
+        {
+            get { var v = Assembly.GetExecutingAssembly().GetName().Version; return $"{v?.Major}.{v?.Minor}.{v?.Build}"; }
+        }
+
+        /// <summary>Brings back what the last run found so the badge is correct before the first check finishes.</summary>
+        private static void RestoreState()
+        {
+            LatestTag = AppConfig.GetString("update_tag") ?? "";
+            LatestUrl = AppConfig.GetString("update_url") ?? "";
+            int at = AppConfig.Get("update_checked_at", 0);
+            if (at > 0) LastCheck = DateTimeOffset.FromUnixTimeSeconds(at).LocalDateTime;
+            Checked = LatestTag.Length > 0;
+            UpdateAvailable = Checked && IsNewer(LatestTag);
+        }
+
+        private static bool IsNewer(string tag)
+        {
+            try { return new Version(tag.TrimStart('v')).CompareTo(new Version(AppVersion)) > 0; }
+            catch { return false; }
+        }
+
+        private static void SaveState()
+        {
+            AppConfig.Set("update_tag", LatestTag);
+            AppConfig.Set("update_url", LatestUrl);
+            AppConfig.Set("update_checked_at", (int)DateTimeOffset.Now.ToUnixTimeSeconds());
+        }
+
+        /// <summary>Repaints the Nebula windows after a check so the badge appears without any interaction.</summary>
+        private static void Repaint()
+        {
+            try { Program.nebulaForm?.BeginInvoke(Program.nebulaForm.Invalidate); } catch { }
+            try { Program.nebulaCompact?.BeginInvoke(Program.nebulaCompact.Invalidate); } catch { }
+        }
 
         /// <summary>On-demand check without the 12 h throttle and without auto-download (Nebula updates page).</summary>
-        public void CheckNow() => Task.Run(() => CheckForUpdatesAsync(false));
+        public void CheckNow() => Task.Run(() => CheckForUpdatesAsync(false, silent: true));
+
+        /// <summary>Checks this repo's releases shortly after start-up and every 12 hours afterwards.</summary>
+        public void StartBackgroundChecks()
+        {
+            RestoreState();
+            Repaint();
+            Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(20));
+                while (true)
+                {
+                    CheckForUpdatesAsync(false, silent: true);
+                    await Task.Delay(TimeSpan.FromHours(12));
+                }
+            });
+        }
 
         static long lastUpdate;
 
@@ -68,14 +128,12 @@ namespace GHelper.AutoUpdate
             }
         }
 
-        async void CheckForUpdatesAsync(bool force = false)
+        async void CheckForUpdatesAsync(bool force = false, bool silent = false)
         {
-
-            if (AppConfig.Is("skip_updates")) return;
-
+            if (AppConfig.Is("skip_updates") && !force && !silent) return;
+            Checking = true;
             try
             {
-
                 using (var httpClient = new HttpClient())
                 {
                     httpClient.DefaultRequestHeaders.Add("User-Agent", "Crateless App");
@@ -84,28 +142,33 @@ namespace GHelper.AutoUpdate
                     var tag = config.GetProperty("tag_name").ToString().Replace("v", "");
                     var assets = config.GetProperty("assets");
 
-                    string url = null;
-
+                    // the standalone build carries the runtime with it, so it must not be replaced by the small one
+                    bool standalone = IsStandaloneBuild();
+                    string url = null, other = null;
                     for (int i = 0; i < assets.GetArrayLength(); i++)
                     {
-                        if (assets[i].GetProperty("browser_download_url").ToString().Contains(".zip"))
-                            url = assets[i].GetProperty("browser_download_url").ToString();
+                        string a = assets[i].GetProperty("browser_download_url").ToString();
+                        if (!a.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) continue;
+                        if (a.Contains("standalone", StringComparison.OrdinalIgnoreCase) == standalone) url = a;
+                        else other ??= a;
                     }
-
-                    if (url is null)
-                        url = assets[0].GetProperty("browser_download_url").ToString();
+                    url ??= other ?? assets[0].GetProperty("browser_download_url").ToString();
 
                     var gitVersion = new Version(tag);
                     var appVersion = new Version(Assembly.GetExecutingAssembly().GetName().Version.ToString());
-                    //appVersion = new Version("0.50.0.0"); 
 
-                    checkedOnce = true;
-                    latestTag = tag;
-                    if (gitVersion.CompareTo(appVersion) > 0)
+                    Checked = true;
+                    LatestTag = tag;
+                    LatestUrl = url;
+                    LastCheck = DateTime.Now;
+                    UpdateAvailable = gitVersion.CompareTo(appVersion) > 0;
+                    SaveState();
+                    Logger.WriteLine($"Update check: installed {AppVersion}, latest {tag}, newer = {UpdateAvailable}");
+
+                    if (UpdateAvailable)
                     {
                         versionUrl = url;
-                        update = true;
-                        settings.SetVersionLabel(Properties.Strings.DownloadUpdate + $": {appVersion.Major}.{appVersion.Minor}.{appVersion.Build} → {tag}", true);
+                        settings.SetVersionLabel(Properties.Strings.DownloadUpdate + $": {AppVersion} \u2192 {tag}", true);
 
                         string[] args = Environment.GetCommandLineArgs();
                         if (force || args.Length > 1 && args[1] == "autoupdate")
@@ -114,7 +177,16 @@ namespace GHelper.AutoUpdate
                             return;
                         }
 
-                        if (AppConfig.GetString("skip_version") != tag)
+                        // the Nebula shell carries a badge, so a background check only raises a tray balloon once per release
+                        if (silent || UI.NebulaTheme.IsEnabled)
+                        {
+                            if (AppConfig.GetString("update_notified") != tag && !AppConfig.Is("skip_updates"))
+                            {
+                                AppConfig.Set("update_notified", tag);
+                                Balloon(tag);
+                            }
+                        }
+                        else if (AppConfig.GetString("skip_version") != tag)
                         {
                             DialogResult dialogResult = settings.ShowMessage(Properties.Strings.DownloadUpdate + ": Crateless " + tag + "?", "Update", MessageBoxButtons.YesNo);
                             if (dialogResult == DialogResult.Yes)
@@ -122,20 +194,35 @@ namespace GHelper.AutoUpdate
                             else
                                 AppConfig.Set("skip_version", tag);
                         }
-
                     }
-                    else
-                    {
-                        Logger.WriteLine($"Latest version {appVersion}");
-                    }
-
                 }
             }
             catch (Exception ex)
             {
-                Logger.WriteLine("Failed to check for updates:" + ex.Message);
+                Logger.WriteLine("Failed to check for updates: " + ex.Message);
             }
+            Checking = false;
+            Repaint();
+        }
 
+        /// <summary>A single-file self-contained build is over a hundred megabytes; the framework-dependent one is under twenty.</summary>
+        private static bool IsStandaloneBuild()
+        {
+            try { return new FileInfo(Application.ExecutablePath).Length > 40 * 1024 * 1024; }
+            catch { return false; }
+        }
+
+        private static void Balloon(string tag)
+        {
+            try
+            {
+                var tray = Program.trayIcon;
+                if (tray is null) return;
+                tray.BalloonTipTitle = "Crateless " + tag;
+                tray.BalloonTipText = Properties.Strings.DownloadUpdate;
+                tray.ShowBalloonTip(10000);
+            }
+            catch (Exception ex) { Logger.WriteLine(ex.Message); }
         }
 
         public static string EscapeString(string input)
@@ -184,7 +271,8 @@ namespace GHelper.AutoUpdate
                     return;
                 }
 
-                string command = $"$ErrorActionPreference = \"Stop\"; Set-Location -Path '{EscapeString(exeDir)}'; Wait-Process -Name \"GHelper\"; Expand-Archive \"{zipName}\" -DestinationPath . -Force; Remove-Item \"{zipName}\" -Force; \".\\{exeName}\"; ";
+                int pid = Environment.ProcessId;
+                string command = $"$ErrorActionPreference = \"Stop\"; Set-Location -Path '{EscapeString(exeDir)}'; Wait-Process -Id {pid} -Timeout 60 -ErrorAction SilentlyContinue; Expand-Archive \"{zipName}\" -DestinationPath . -Force; Remove-Item \"{zipName}\" -Force; \".\\{exeName}\"; ";
                 Logger.WriteLine(command);
 
                 try

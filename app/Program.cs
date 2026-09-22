@@ -86,6 +86,7 @@ namespace GHelper
             toast = new ToastForm();
 
             hardwareOverlay = new HardwareOverlay();
+            settingsForm.UpdateControl?.StartBackgroundChecks();
             try { UI.Nebula.OledCare.Init(); } catch (Exception ex) { Logger.WriteLine("OLED care init: " + ex.Message); }
             try { UI.Nebula.AuraWallpaper.Init(); } catch (Exception ex) { Logger.WriteLine("Aura wallpaper init: " + ex.Message); }
 

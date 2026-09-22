@@ -109,10 +109,16 @@ namespace GHelper.UI.Nebula.Pages
             if (appNew) c.Pill(px, y + 11, NebulaText.T("Update available", "Есть обновление") + (uc!.latestTag.Length > 0 ? " " + uc.latestTag : ""), Color.FromArgb(50, th.Warning), th.Warning);
             else if (uc is { checkedOnce: true }) c.Pill(px, y + 11, "✓ " + NebulaText.T("Up to date", "Актуальная"), Color.FromArgb(50, Ok), Ok);
             c.Txt(NebulaText.T("Installed", "Установлена") + $" {ver?.Major}.{ver?.Minor}.{ver?.Build}", 256, y + 53, c.F(12), th.Muted);
-            c.Txt(NebulaText.T("Checked automatically every 12 hours from this repo's releases.", "Проверяется автоматически раз в 12 часов по релизам репозитория."), 256, y + 76, c.F(10), th.Faint);
+            var last = AutoUpdate.AutoUpdateControl.LastCheck;
+            string when = AutoUpdate.AutoUpdateControl.Checking ? NebulaText.T("Checking…", "Проверяем…")
+                        : last == DateTime.MinValue ? NebulaText.T("never", "ещё не проверяли")
+                        : last.Date == DateTime.Today ? last.ToString("HH:mm")
+                        : last.ToString("dd.MM HH:mm");
+            c.Txt(NebulaText.T("Checked automatically every 12 hours from this repo's releases.", "Проверяется автоматически раз в 12 часов по релизам репозитория.")
+                  + "  ·  " + NebulaText.T("Last checked", "Последняя проверка") + ": " + when, 256, y + 76, c.F(10), th.Faint);
             c.Txt(NebulaText.T("Notify", "Уведомлять"), 1240, y + 44, c.F(11), th.Muted, StringAlignment.Far);
             c.Toggle(1252, y + 27, !AppConfig.Is("skip_updates"), "updates:notify");
-            c.Button(1054, y + 66, 160, 32, NebulaText.T("Check now", "Проверить"), "updates:check", primary: false);
+            c.Button(1054, y + 66, 160, 32, AutoUpdate.AutoUpdateControl.Checking ? NebulaText.T("Checking…", "Проверяем…") : NebulaText.T("Check now", "Проверить"), "updates:check", primary: false, enabled: !AutoUpdate.AutoUpdateControl.Checking);
             c.Button(1226, y + 66, 148, 32, appNew ? NebulaText.T("Download", "Скачать") : NebulaText.T("Releases  ↗", "Релизы  ↗"), "updates:releases", primary: appNew);
             y += 118 + 16;
 
