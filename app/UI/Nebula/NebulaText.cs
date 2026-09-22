@@ -12,8 +12,8 @@ namespace GHelper.UI.Nebula
         {
             get
             {
-                var lang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-                return lang == "ru" || lang == "uk" || lang == "be";
+                // only Russian falls back to the inline text; every other language has its own table
+                return CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ru";
             }
         }
 
@@ -21,10 +21,17 @@ namespace GHelper.UI.Nebula
         // Lookup order: exact culture (pt-BR), language (pt), then the inline RU for ru/uk/be, then English.
         private static readonly Lazy<Dictionary<string, string>?> table = new(LoadTable);
 
+        /// <summary>A language with several tables needs one of them picked when Windows only says "pt" or "zh".</summary>
+        private static readonly Dictionary<string, string> Defaults = new()
+        {
+            ["pt"] = "pt-PT", ["zh"] = "zh-CN", ["cs"] = "cs",
+        };
+
         private static Dictionary<string, string>? LoadTable()
         {
             var culture = CultureInfo.CurrentUICulture;
-            foreach (var name in new[] { culture.Name, culture.TwoLetterISOLanguageName })
+            string two = culture.TwoLetterISOLanguageName;
+            foreach (var name in new[] { culture.Name, two, Defaults.GetValueOrDefault(two) })
             {
                 if (string.IsNullOrEmpty(name) || name == "en") continue;
                 try
@@ -44,6 +51,17 @@ namespace GHelper.UI.Nebula
             var t = table.Value;
             if (t is not null && t.TryGetValue(en, out var s) && s.Length > 0) return s;
             return Ru ? ru : en;
+        }
+
+        /// <summary>
+        /// Same lookup for a sentence with numbers in it. The text has to be looked up before the
+        /// values are put in, so these keep {0}, {1} placeholders instead of being interpolated at
+        /// the call site, where the finished string could never match a translation.
+        /// </summary>
+        public static string Tf(string en, string ru, params object[] args)
+        {
+            try { return string.Format(T(en, ru), args); }
+            catch { return string.Format(Ru ? ru : en, args); }
         }
 
         public static string ControlCenter => T("Control Center", "Центр управления");

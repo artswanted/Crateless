@@ -461,5 +461,17 @@
  "Open the updates page": "Відкрити сторінку оновлень",
  "Last checked": "Остання перевірка",
  "never": "ще не перевіряли",
- "Checking…": "Перевіряємо…"
+ "Checking…": "Перевіряємо…",
+ "Then return to the usual {0}% limit.": "Потім повернути звичайний ліміт {0}%.",
+ "up to {0} Hz": "до {0} Гц",
+ "  ·  now {0} Hz": "  ·  зараз {0} Гц",
+ "Auto: {0} Hz on AC, {1} Hz on battery.": "Авто: {0} Гц від мережі, {1} Гц від батареї.",
+ "and {0} more…": "і ще {0}…",
+ "Updates available: {0}": "Є оновлення: {0}",
+ "Installed and current: {0}": "Встановлено, актуально: {0}",
+ "Cannot compare: {0}": "Не порівняти: {0}",
+ "Hidden: {0}": "Приховано: {0}",
+ "{0} wallpapers. Files are saved to Pictures\\ROG Wallpapers.": "Шпалер: {0}. Файли зберігаються в Зображення\\ROG Wallpapers.",
+ " · {0} sizes": " · розмірів: {0}",
+ "{0:N0} downloads": "{0:N0} завантажень"
 }

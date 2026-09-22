@@ -26,11 +26,17 @@ namespace GHelper.UI.Nebula
 
         // -- shared helpers for pages --------------------------------------------------------------
         protected static void Menu(NebulaForm form, Point at, IEnumerable<(string text, bool isChecked, Action action)> items)
+            => Menu(form, at, items.Select(i => (i.text, i.isChecked, (Image?)null, i.action)));
+
+        /// <summary>Same menu with a small picture in front of each entry (language flags).</summary>
+        protected static void Menu(NebulaForm form, Point at, IEnumerable<(string text, bool isChecked, Image? image, Action action)> items)
         {
-            var menu = new ContextMenuStrip();
-            foreach (var (text, isChecked, action) in items)
+            var menu = new ContextMenuStrip { ShowImageMargin = true, ImageScalingSize = new Size(20, 14) };
+            foreach (var (text, isChecked, image, action) in items)
             {
-                var item = new ToolStripMenuItem(text) { Checked = isChecked };
+                var item = new ToolStripMenuItem(text) { Checked = isChecked, Image = image, ImageScaling = ToolStripItemImageScaling.None };
+                // a picture replaces the tick mark, so the current entry is marked by its weight instead
+                if (isChecked && image is not null) item.Font = new Font(item.Font, FontStyle.Bold);
                 item.Click += (_, _) => { try { action(); } catch (Exception ex) { Logger.WriteLine("Nebula menu: " + ex.Message); } form.Invalidate(); };
                 menu.Items.Add(item);
             }

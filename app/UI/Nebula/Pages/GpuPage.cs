@@ -250,7 +250,7 @@ namespace GHelper.UI.Nebula.Pages
                     ry += 8;
                 }
                 if (procs.Count > 8)
-                    c.Txt(NebulaText.T($"and {procs.Count - 8} more…", $"и ещё {procs.Count - 8}…"), 256, ry + 24, c.F(11), th.Faint);
+                    c.Txt(NebulaText.Tf("and {0} more…", "и ещё {0}…", procs.Count - 8), 256, ry + 24, c.F(11), th.Faint);
             }
 
             // ---- iGPU memory ------------------------------------------------------------------------------

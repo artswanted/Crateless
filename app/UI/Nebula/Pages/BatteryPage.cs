@@ -91,7 +91,7 @@ namespace GHelper.UI.Nebula.Pages
             bool full = BatteryControl.chargeFull;
             c.Txt(NebulaText.T("Before a trip", "Перед поездкой"), 256, 477, c.F(15, FontStyle.Bold), th.Text);
             c.Txt(NebulaText.T("Charge to 100% once", "Разово зарядить до 100%"), 256, 507, c.F(16, FontStyle.Bold), th.Text);
-            c.Txt(NebulaText.T($"Then return to the usual {limit}% limit.", $"Затем вернуть обычный лимит {limit}%."), 256, 536, c.F(12), th.Muted);
+            c.Txt(NebulaText.Tf("Then return to the usual {0}% limit.", "Затем вернуть обычный лимит {0}%.", limit), 256, 536, c.F(12), th.Muted);
             c.Pill(256, 557, full ? NebulaText.T("ACTIVE", "ВКЛЮЧЕНО") : NebulaText.T("OFF", "ВЫКЛЮЧЕНО"), full ? th.AccentBg : th.Raised, full ? th.Accent : th.Muted);
             c.Button(810, 490, 224, 36, full ? NebulaText.T("Cancel", "Отменить") : NebulaText.T("Enable", "Включить"), "battery:full", primary: !full);
 

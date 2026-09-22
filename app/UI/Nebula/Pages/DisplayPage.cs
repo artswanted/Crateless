@@ -53,8 +53,8 @@ namespace GHelper.UI.Nebula.Pages
 
             string panel = AppConfig.GetString("internal_display")?.Trim() ?? "";
             string sub = (oled ? "OLED · " : "") + (panel.Length > 0 ? panel + " · " : "") +
-                         (max > 0 ? NebulaText.T($"up to {max} Hz", $"до {max} Гц") : "") +
-                         (enabled ? NebulaText.T($"  ·  now {frequency} Hz", $"  ·  сейчас {frequency} Гц") : NebulaText.T("  ·  turned off", "  ·  выключен"));
+                         (max > 0 ? NebulaText.Tf("up to {0} Hz", "до {0} Гц", max) : "") +
+                         (enabled ? NebulaText.Tf("  ·  now {0} Hz", "  ·  сейчас {0} Гц", frequency) : NebulaText.T("  ·  turned off", "  ·  выключен"));
             c.Txt(sub, 256, 190, c.F(11), th.Muted);
 
             c.Segment(256, 235, 210, 36, NebulaText.T("Auto", "Авто"), auto, "display:auto", enabled);
@@ -62,7 +62,7 @@ namespace GHelper.UI.Nebula.Pages
             string hi = (max > min ? max : frequency) + " " + NebulaText.T("Hz", "Гц") + (overdriveSupported && !noOverdrive ? " + OD" : "");
             c.Segment(700, 235, 210, 36, hi, !auto && frequency > min, "display:max", enabled && max > min);
 
-            c.Txt(NebulaText.T($"Auto: {max} Hz on AC, {min} Hz on battery.", $"Авто: {max} Гц от сети, {min} Гц от батареи."), 256, 301, c.F(11), th.Faint);
+            c.Txt(NebulaText.Tf("Auto: {0} Hz on AC, {1} Hz on battery.", "Авто: {0} Гц от сети, {1} Гц от батареи.", max, min), 256, 301, c.F(11), th.Faint);
 
             // ---- picture ------------------------------------------------------------------------
             c.Surface(236, 337, 399, 361);

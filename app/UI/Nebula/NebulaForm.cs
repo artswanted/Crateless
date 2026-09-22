@@ -372,10 +372,12 @@ namespace GHelper.UI.Nebula
 
             // compact view switch, top-right of the top bar
             {
+                // the compact switch used to appear only under the cursor; it now always reads as a button
                 float cx = ClientSize.Width / k - 52;
                 var cr = R(cx, 6, 40, 31);
-                if (hover == "rail:compact") c.Card(cr, 8, theme.Raised);
-                c.IconAt("compact", cx + 8, 9.5f, 24, hover == "rail:compact");
+                bool hv = hover == "rail:compact";
+                c.Card(cr, 8, hv ? theme.Line : theme.Raised, hv ? theme.Accent : theme.Line);
+                c.IconAt("compact", cx + 8, 9.5f, 24, true);
                 c.Hit(cr, "rail:compact", NebulaText.T("Compact view", "Компактный вид"));
             }
 

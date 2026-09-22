@@ -130,10 +130,10 @@ namespace GHelper.UI.Nebula.Pages
             string head = model + (biosVersion.Length > 0 ? " · BIOS " + biosVersion : "") + (serial.Length > 0 ? " · S/N " + serial : "");
             c.Txt(head, 256, y + 28, c.F(11), th.Faint);
             float sx = 256;
-            sx += c.Pill(sx, y + 44, NebulaText.T($"Updates available: {nNew}", $"Есть обновления: {nNew}"), Color.FromArgb(nNew > 0 ? 60 : 25, th.Warning), nNew > 0 ? th.Warning : th.Faint) + 10;
-            sx += c.Pill(sx, y + 44, NebulaText.T($"Installed and current: {nOk}", $"Установлено, актуально: {nOk}"), Color.FromArgb(50, Ok), Ok) + 10;
-            sx += c.Pill(sx, y + 44, NebulaText.T($"Cannot compare: {nUnk}", $"Не сравнить: {nUnk}"), Color.FromArgb(45, Unknown), Unknown) + 10;
-            if (nHid > 0) c.Pill(sx, y + 44, NebulaText.T($"Hidden: {nHid}", $"Скрыто: {nHid}"), th.Raised, th.Faint);
+            sx += c.Pill(sx, y + 44, NebulaText.Tf("Updates available: {0}", "Есть обновления: {0}", nNew), Color.FromArgb(nNew > 0 ? 60 : 25, th.Warning), nNew > 0 ? th.Warning : th.Faint) + 10;
+            sx += c.Pill(sx, y + 44, NebulaText.Tf("Installed and current: {0}", "Установлено, актуально: {0}", nOk), Color.FromArgb(50, Ok), Ok) + 10;
+            sx += c.Pill(sx, y + 44, NebulaText.Tf("Cannot compare: {0}", "Не сравнить: {0}", nUnk), Color.FromArgb(45, Unknown), Unknown) + 10;
+            if (nHid > 0) c.Pill(sx, y + 44, NebulaText.Tf("Hidden: {0}", "Скрыто: {0}", nHid), th.Raised, th.Faint);
             string state = loading ? NebulaText.T("Loading from asus.com…", "Загружаем с asus.com…")
                          : error.Length > 0 ? NebulaText.T("Could not reach the ASUS site: ", "Не удалось связаться с сайтом ASUS: ") + error
                          : nNew > 0 ? NebulaText.T("There is something to update", "Есть что обновить") : NebulaText.T("Everything is up to date", "Всё актуально");

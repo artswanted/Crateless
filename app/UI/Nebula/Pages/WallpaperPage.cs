@@ -44,7 +44,7 @@ namespace GHelper.UI.Nebula.Pages
             lock (RogWallpapers.Items) items = RogWallpapers.Items.ToList();
             string state = RogWallpapers.Loading ? NebulaText.T("Loading the gallery from asus.com…", "Загружаем галерею с asus.com…")
                          : RogWallpapers.Error.Length > 0 ? NebulaText.T("Could not reach the ASUS site: ", "Не удалось связаться с сайтом ASUS: ") + RogWallpapers.Error
-                         : NebulaText.T($"{items.Count} wallpapers. Files are saved to Pictures\\ROG Wallpapers.", $"Обоев: {items.Count}. Файлы сохраняются в Изображения\\ROG Wallpapers.");
+                         : NebulaText.Tf("{0} wallpapers. Files are saved to Pictures\\ROG Wallpapers.", "Обоев: {0}. Файлы сохраняются в Изображения\\ROG Wallpapers.", items.Count);
             c.Txt(state, 256, y + 52, c.F(11), RogWallpapers.Error.Length > 0 ? th.Danger : th.Muted);
             c.Txt(NebulaText.T("Nothing is bundled with the app; previews and files come from the ASUS CDN when this page is open.", "В приложение ничего не встроено, превью и файлы приходят с CDN ASUS при открытии страницы."), 256, y + 72, c.F(10), th.Faint);
             c.Button(900, y + 30, 110, 32, NebulaText.T("Reload", "Обновить"), "wp:reload", primary: false, enabled: !RogWallpapers.Loading);
@@ -119,10 +119,10 @@ namespace GHelper.UI.Nebula.Pages
                 c.Txt(Trim(it.Name, 36), cx + 16, cy + ThumbH + 26, c.F(13, FontStyle.Bold), th.Text);
                 var best = RogWallpapers.Best(it);
                 string meta = best is null ? "" : $"{best.Width}×{best.Height}";
-                if (it.Desktop.Count > 1) meta += NebulaText.T($" · {it.Desktop.Count} sizes", $" · размеров: {it.Desktop.Count}");
+                if (it.Desktop.Count > 1) meta += NebulaText.Tf(" · {0} sizes", " · размеров: {0}", it.Desktop.Count);
                 if (it.Phone.Count > 0) meta += NebulaText.T(" · phone", " · телефон");
                 c.Txt(meta, cx + 16, cy + ThumbH + 46, c.F(10), th.Faint);
-                c.Txt(NebulaText.T($"{it.Downloads:N0} downloads", $"{it.Downloads:N0} загрузок"), cx + CardW - 16, cy + ThumbH + 46, c.F(10), th.Faint, StringAlignment.Far);
+                c.Txt(NebulaText.Tf("{0:N0} downloads", "{0:N0} загрузок", it.Downloads), cx + CardW - 16, cy + ThumbH + 46, c.F(10), th.Faint, StringAlignment.Far);
 
                 float by = cy + ThumbH + 60;
                 // File.Exists once per card per frame was a disk hit per visible card; check it only when the card is on screen
