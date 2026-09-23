@@ -1,4 +1,4 @@
-using GHelper.Gpu.NVidia;
+﻿using GHelper.Gpu.NVidia;
 using GHelper.Helpers;
 using GHelper.USB;
 using PawnIO;
@@ -91,6 +91,17 @@ namespace GHelper.Mode
 
         public void AutoPerformance(bool powerChanged = false)
         {
+            // an explicit rule for this power source wins over "whatever was used here last time"
+            if (powerChanged && PowerRules.Enabled)
+            {
+                bool onAc = SystemInformation.PowerStatus.PowerLineStatus == PowerLineStatus.Online;
+                int wanted = PowerRules.Resolve(onAc);
+                Logger.WriteLine($"Power rule on {(onAc ? "AC" : "battery")}: " +
+                                 (wanted == PowerRules.Keep ? "stay in " + Modes.GetCurrentName() : "switch to " + Modes.GetName(wanted)));
+                SetPerformanceMode(wanted == PowerRules.Keep ? Modes.GetCurrent() : wanted, true);
+                return;
+            }
+
             int mode = AppConfig.Get("performance_" + Program.PerformanceKey());
             Logger.WriteLine($"{Program.currentSource} Performance Mode: {Modes.GetName(mode == -1 ? Modes.GetCurrent() : mode)}");
 

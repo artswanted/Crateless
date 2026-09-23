@@ -52,6 +52,9 @@ compact fly-out from the tray. Nothing else changes.
 - Connected ASUS mice, keyboards and headsets: DPI, polling, lighting, sidetone, noise
   reduction, ANC, power settings inline; bindings and per-key RGB in the device window.
 - Charge limit, one-time full charge, battery health.
+- Power: the screen-off, sleep and hibernate timeouts of the plan Windows is using, for the
+  charger and the battery, plus a per-mode rule for what the performance mode does when the
+  charger comes off and when it goes back on.
 - Keyboard lighting, AniMe Matrix and Slash.
 - Wallpapers: the official ROG gallery with previews inside the window and one-click
   download, your own picture, or a still wallpaper drawn in the current Aura colour.

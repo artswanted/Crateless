@@ -417,7 +417,7 @@ namespace GHelper.UI.Nebula
                 }
                 c.IconAt(item.icon, 31, y + 12, 24, active);
                 if (railExpanded)
-                    c.Txt(item.title(), 70, y + 30, c.F(13, active ? FontStyle.Bold : FontStyle.Regular), active ? theme.Accent : theme.Text);
+                    c.TxtFit(item.title(), 70, y + 30, RailExpanded - 100, 13, active ? FontStyle.Bold : FontStyle.Regular, active ? theme.Accent : theme.Text);
                 // a dot on the updates entry while a newer release is waiting
                 if (item.id == "updates" && AutoUpdate.AutoUpdateControl.UpdateAvailable && !AppConfig.Is("skip_updates"))
                 {

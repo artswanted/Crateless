@@ -114,7 +114,7 @@ namespace GHelper.UI.Nebula
         public static string RailFan => T("Cooling", "Охлаждение");
         public static string RailGpu => T("Graphics", "Графика");
         public static string RailDisplay => T("Display", "Экран");
-        public static string RailBattery => T("Battery", "Батарея");
+        public static string RailBattery => T("Power & battery", "Электропитание");
         public static string RailLight => T("Lighting", "Подсветка");
         public static string RailKeyboard => T("Keys", "Клавиши");
         public static string RailMouse => T("Devices", "Устройства");
