@@ -143,6 +143,11 @@ namespace GHelper.UI.Nebula.Pages
 
         private static string Dash => "—";
 
+        /// <summary>Used and total space, in the unit that keeps the number short.</summary>
+        private static string Size(long usedGb, long totalGb) => totalGb >= 1000
+            ? $"{usedGb / 1024.0:0.0} / {totalGb / 1024.0:0.0} {NebulaText.Tb}"
+            : $"{usedGb:N0} / {totalGb:N0} {NebulaText.Gb}";
+
         private void PaintCpu(NebulaCanvas c)
         {
             float y = Row1;
@@ -226,18 +231,30 @@ namespace GHelper.UI.Nebula.Pages
             BlockTitle(c, ColR, y + 22, "chart", NebulaText.T("Memory", "Память"));
             y += 66;
 
+            // the memory speed rides along with the amount: the drives below need the room
             var used = HardwareControl.ramUsedMb; var pct = HardwareControl.ramUsage;
+            string speed = NebulaSensors.RamMhz is > 0 ? $"  ·  {NebulaSensors.RamMhz:N0} MT/s" : "";
             if (used is not null && pct is not null)
             {
                 double totalGb = used.Value / 1024.0 / Math.Max(1, pct.Value) * 100.0;
-                y = Row(c, ColR, y, NebulaText.T("RAM", "ОЗУ"), $"{used.Value / 1024.0:0.0} / {Math.Round(totalGb)} {NebulaText.Gb}", pct.Value / 100f, c.Theme.Blue);
+                y = Row(c, ColR, y, NebulaText.T("RAM", "ОЗУ"), $"{used.Value / 1024.0:0.0} / {Math.Round(totalGb)} {NebulaText.Gb}{speed}", pct.Value / 100f, c.Theme.Blue);
             }
-            else y = Row(c, ColR, y, NebulaText.T("RAM", "ОЗУ"), Dash, null, c.Theme.Blue);
-            if (NebulaSensors.RamMhz is > 0)
-                y = Row(c, ColR, y, NebulaText.T("Memory speed", "Частота памяти"), $"{NebulaSensors.RamMhz:N0} MT/s", null, c.Theme.Blue);
+            else y = Row(c, ColR, y, NebulaText.T("RAM", "ОЗУ"), Dash + speed, null, c.Theme.Blue);
 
-            if (NebulaSensors.Disk is { } d && d.totalGb > 0)
-                y = Row(c, ColR, y, NebulaText.T("System drive", "Накопитель"), $"{d.usedGb:N0} / {d.totalGb:N0} {NebulaText.Gb}", d.usedGb / (float)d.totalGb, c.Theme.Blue);
+            // one line per physical disk; three is all the block has room for, the rest are summed
+            var disks = NebulaSensors.Disks;
+            for (int i = 0; i < Math.Min(disks.Count, 3); i++)
+            {
+                if (i == 2 && disks.Count > 3)
+                {
+                    long u = 0, t = 0;
+                    for (int j = 2; j < disks.Count; j++) { u += disks[j].usedGb; t += disks[j].totalGb; }
+                    y = Row(c, ColR, y, NebulaText.T("Other drives", "Остальные"), Size(u, t), t > 0 ? u / (float)t : null, c.Theme.Blue);
+                    break;
+                }
+                var disk = disks[i];
+                y = Row(c, ColR, y, disk.label, Size(disk.usedGb, disk.totalGb), disk.totalGb > 0 ? disk.usedGb / (float)disk.totalGb : null, c.Theme.Blue);
+            }
 
             try
             {

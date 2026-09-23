@@ -22,7 +22,10 @@ namespace GHelper.UI.Nebula
         public static int? RamMhz;                     // configured memory speed (WMI, read once)
         private static NvAPIWrapper.GPU.PhysicalGPU? nvGpu;
         private static bool nvFailed, ramRead;
-        public static (long usedGb, long totalGb)? Disk;
+        /// <summary>One entry per physical disk, newest reading; the label lists its drive letters.</summary>
+        public static List<(string label, long usedGb, long totalGb)> Disks = new();
+        private static List<(string label, string[] roots)>? diskLayout;
+        private const long Gb = 1024L * 1024 * 1024;
 
         private static System.Diagnostics.PerformanceCounter? cpuPerf;
         private static bool cpuPerfFailed;
@@ -120,18 +123,88 @@ namespace GHelper.UI.Nebula
                 catch { RamMhz = null; }
             }
 
-            // system drive, every 30 s
-            if (diskTick++ % 30 == 0)
+            // drives, every 30 s; the layout itself is re-read every ten minutes so a disk added
+            // while the app is running still shows up
+            if (diskTick % 30 == 0)
             {
-                try
-                {
-                    var d = new DriveInfo(Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\");
-                    long total = d.TotalSize / (1024L * 1024 * 1024);
-                    long used = (d.TotalSize - d.TotalFreeSpace) / (1024L * 1024 * 1024);
-                    Disk = (used, total);
-                }
-                catch { Disk = null; }
+                if (diskTick % 600 == 0) diskLayout = null;
+                ReadDisks();
             }
+            diskTick++;
+        }
+
+        /// <summary>
+        /// Usage per physical disk. A single SSD split into partitions is still one disk, so its
+        /// volumes are summed; two disks stay two lines.
+        /// </summary>
+        private static void ReadDisks()
+        {
+            try
+            {
+                diskLayout ??= ReadDiskLayout();
+                var list = new List<(string, long, long)>();
+                foreach (var (label, roots) in diskLayout)
+                {
+                    long total = 0, used = 0;
+                    foreach (string root in roots)
+                    {
+                        try
+                        {
+                            var d = new DriveInfo(root);
+                            if (d.DriveType != DriveType.Fixed || !d.IsReady) continue;
+                            total += d.TotalSize;
+                            used += d.TotalSize - d.TotalFreeSpace;
+                        }
+                        catch { }
+                    }
+                    if (total > 0) list.Add((label, used / Gb, total / Gb));
+                }
+                Disks = list;
+            }
+            catch (Exception ex) { Logger.WriteLine("Drives: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Which volumes sit on which physical disk, through WMI. When that cannot be answered we
+        /// fall back to a line per fixed volume, which is what the page used to show.
+        /// </summary>
+        private static List<(string label, string[] roots)> ReadDiskLayout()
+        {
+            var disks = new List<(string label, string[] roots)>();
+            try
+            {
+                using var drives = new System.Management.ManagementObjectSearcher("SELECT DeviceID FROM Win32_DiskDrive");
+                foreach (System.Management.ManagementObject drive in drives.Get())
+                {
+                    // the device id looks like \.\PHYSICALDRIVE0 and goes into a WQL string, where a backslash escapes
+                    string id = (drive["DeviceID"]?.ToString() ?? "").Replace("\\", "\\\\");
+                    if (id.Length == 0) continue;
+
+                    var roots = new List<string>();
+                    using var parts = new System.Management.ManagementObjectSearcher(
+                        $"ASSOCIATORS OF {{Win32_DiskDrive.DeviceID='{id}'}} WHERE AssocClass=Win32_DiskDriveToDiskPartition");
+                    foreach (System.Management.ManagementObject part in parts.Get())
+                    {
+                        using var volumes = new System.Management.ManagementObjectSearcher(
+                            $"ASSOCIATORS OF {{Win32_DiskPartition.DeviceID='{part["DeviceID"]}'}} WHERE AssocClass=Win32_LogicalDiskToPartition");
+                        foreach (System.Management.ManagementObject volume in volumes.Get())
+                            if (volume["DeviceID"]?.ToString() is { Length: > 0 } letter) roots.Add(letter + "\\");
+                    }
+                    if (roots.Count > 0) disks.Add((string.Join(" ", roots.Select(r => r[..2])), roots.ToArray()));
+                }
+            }
+            catch (Exception ex) { Logger.WriteLine("Disk layout: " + ex.Message); }
+
+            if (disks.Count == 0)
+                foreach (var d in DriveInfo.GetDrives())
+                    try { if (d.DriveType == DriveType.Fixed && d.IsReady) disks.Add((d.Name[..2], new[] { d.Name })); }
+                    catch { }
+
+            // the disk Windows lives on goes first
+            string system = Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\";
+            return disks.OrderByDescending(d => d.roots.Contains(system, StringComparer.OrdinalIgnoreCase))
+                        .ThenBy(d => d.label, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
         }
 
         /// <summary>Call on the UI thread after Read().</summary>

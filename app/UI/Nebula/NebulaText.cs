@@ -87,6 +87,7 @@ namespace GHelper.UI.Nebula
         public static string Rpm => T("rpm", "об/мин");
         public static string Memory => T("MEMORY", "ПАМЯТЬ");
         public static string Gb => T("GB", "ГБ");
+        public static string Tb => T("TB", "ТБ");
         public static string Watt => T("W", "Вт");
         public static string Mode => T("PERFORMANCE MODE", "РЕЖИМ РАБОТЫ");
         public static string SilentHint => T("Less noise", "Меньше шума");
