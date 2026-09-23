@@ -1,3 +1,4 @@
+using GHelper.UI.Nebula;
 using System.Runtime.InteropServices;
 
 namespace GHelper.Battery
@@ -11,6 +12,18 @@ namespace GHelper.Battery
     {
         /// <summary>The three timeouts we expose, in the order they happen.</summary>
         public enum Idle { ScreenOff, Sleep, Hibernate }
+
+        /// <summary>The values offered in the menus, in seconds. 0 is "never".</summary>
+        public static readonly int[] Spans = { 0, 60, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600, 7200, 10800, 14400, 18000 };
+
+        /// <summary>A timeout as it is written in the interface; -1 means the plan does not report it.</summary>
+        public static string Label(int seconds)
+        {
+            if (seconds < 0) return "—";
+            if (seconds == 0) return NebulaText.T("Never", "Никогда");
+            if (seconds >= 3600 && seconds % 3600 == 0) return NebulaText.Tf("{0} h", "{0} ч", seconds / 3600);
+            return NebulaText.Tf("{0} min", "{0} мин", seconds / 60);
+        }
 
         private static readonly Guid SubVideo = new("7516b95f-f776-4464-8c53-06167f40cc99");
         private static readonly Guid VideoIdle = new("3c0bc021-c8a8-4e07-a973-6b14cbcb2b7e");

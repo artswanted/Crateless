@@ -1,3 +1,4 @@
+using GHelper.Battery;
 using GHelper.Mode;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
@@ -14,6 +15,12 @@ namespace GHelper.UI.Nebula
         private const float DesignW = 440f;
         private const float DesignH = 700f;
 
+        /// <summary>Room the screen-off and sleep lines take when they are switched on.</summary>
+        private const float IdleBlockH = 94f;
+
+        private static bool ShowIdle => AppConfig.Is("compact_idle");
+        private float Design => DesignH + (ShowIdle ? IdleBlockH : 0);
+
         private float k = 1f;
         private NebulaTheme theme = NebulaTheme.Dark;
         private readonly NebulaCanvas canvas = new();
@@ -21,6 +28,13 @@ namespace GHelper.UI.Nebula
         private bool reading;
         private string hover = "";
         private long hiddenAt;
+
+        // the idle timeouts come from PowrProf, so they are read at most once a second and again
+        // as soon as the power source changes
+        private bool idleValid;
+        private bool idleAc;
+        private long idleRead;
+        private int idleScreen = -1, idleSleep = -1;
 
         public NebulaCompactForm()
         {
@@ -35,8 +49,7 @@ namespace GHelper.UI.Nebula
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             DoubleBuffered = true;
 
-            float dpi = DeviceDpi / 96f;
-            Size = new Size((int)(DesignW * dpi), (int)(DesignH * dpi));
+            ApplySize();
 
             refreshTimer.Tick += (_, _) => RefreshSensors(false);
             Deactivate += (_, _) => { hiddenAt = Environment.TickCount64; Hide(); };
@@ -46,6 +59,24 @@ namespace GHelper.UI.Nebula
                 else refreshTimer.Stop();
             };
             MouseLeave += (_, _) => SetHover("");
+        }
+
+        /// <summary>
+        /// Sets the window to the height the current content needs. The idle timeouts add two rows,
+        /// so switching them on or off changes the size of the fly-out.
+        /// </summary>
+        public void ApplySize()
+        {
+            float dpi = DeviceDpi / 96f;
+            var size = new Size((int)(DesignW * dpi), (int)(Design * dpi));
+            if (Size == size) return;
+            Size = size;
+            if (IsHandleCreated)
+            {
+                using var path = NebulaCanvas.Rounded(new RectangleF(0, 0, Width, Height), dpi * 12);
+                Region = new Region(path);
+            }
+            Invalidate();
         }
 
         protected override CreateParams CreateParams
@@ -75,6 +106,8 @@ namespace GHelper.UI.Nebula
             // a tray click that just deactivated us should not immediately reopen
             if (Environment.TickCount64 - hiddenAt < 300) return;
 
+            ApplySize();
+
             var wa = (Screen.PrimaryScreen ?? Screen.FromControl(this)).WorkingArea;
             Location = new Point(wa.Right - Width - 12, wa.Bottom - Height - 12);
             Show();
@@ -99,7 +132,7 @@ namespace GHelper.UI.Nebula
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
-            k = Math.Min(ClientSize.Width / DesignW, ClientSize.Height / DesignH);
+            k = Math.Min(ClientSize.Width / DesignW, ClientSize.Height / Design);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
@@ -171,8 +204,35 @@ namespace GHelper.UI.Nebula
             int hz = AppConfig.Get("frequency", 0);
             c.ValueRow(24, 612, 368, NebulaText.T("Display", "Экран"), hz > 0 ? hz + " " + NebulaText.T("Hz", "Гц") : "—", "compact:screen");
 
-            c.Button(24, 633, 392, 36, NebulaText.ControlCenter, "compact:full", primary: false);
-            c.Txt("CRATELESS / NEBULA", 24, 690, c.F(9), theme.Faint);
+            // idle timeouts of the plan, for the source we are on right now
+            float tail = 0;
+            if (ShowIdle)
+            {
+                ReadIdle(plugged);
+                c.Txt(NebulaText.T("ON IDLE", "ПРИ ПРОСТОЕ") + "  ·  " + (plugged ? NebulaText.OnAc : NebulaText.OnBattery),
+                      24, 642, c.F(10, FontStyle.Bold), theme.Faint);
+                c.ValueRow(24, 672, 368, NebulaText.T("Screen off", "Экран гаснет"), PowerPlan.Label(idleScreen), "compact:idle:ScreenOff", idleScreen >= 0);
+                c.ValueRow(24, 706, 368, NebulaText.T("Sleep", "Спящий режим"), PowerPlan.Label(idleSleep), "compact:idle:Sleep", idleSleep >= 0);
+                tail = IdleBlockH;
+            }
+
+            c.Button(24, 633 + tail, 392, 36, NebulaText.ControlCenter, "compact:full", primary: false);
+            c.Txt("CRATELESS / NEBULA", 24, 690 + tail, c.F(9), theme.Faint);
+        }
+
+        private void ReadIdle(bool onAc)
+        {
+            long now = Environment.TickCount64;
+            if (idleValid && onAc == idleAc && now - idleRead < 1000) return;
+            idleAc = onAc;
+            idleRead = now;
+            try
+            {
+                idleScreen = PowerPlan.Get(PowerPlan.Idle.ScreenOff, onAc);
+                idleSleep = PowerPlan.Get(PowerPlan.Idle.Sleep, onAc);
+                idleValid = true;
+            }
+            catch (Exception ex) { Logger.WriteLine("Compact idle: " + ex.Message); }
         }
 
         private static void Reading(NebulaCanvas c, float x, string value, string label)
@@ -211,6 +271,7 @@ namespace GHelper.UI.Nebula
             try
             {
                 if (id.StartsWith("compact:mode:")) { Program.modeControl.SetPerformanceMode(int.Parse(id[13..]), true); Invalidate(); return; }
+                if (id.StartsWith("compact:idle:")) { ShowIdleMenu(e.Location, Enum.Parse<PowerPlan.Idle>(id[13..])); return; }
                 switch (id)
                 {
                     case "compact:close": Hide(); return;
@@ -229,6 +290,27 @@ namespace GHelper.UI.Nebula
                 }
             }
             catch (Exception ex) { Logger.WriteLine($"Nebula compact {id}: {ex.Message}"); }
+        }
+
+        private void ShowIdleMenu(Point at, PowerPlan.Idle what)
+        {
+            bool onAc = Gpu.GPUModeControl.IsPlugged();
+            int now = PowerPlan.Get(what, onAc);
+            var menu = new ContextMenuStrip();
+            foreach (int span in PowerPlan.Spans)
+            {
+                int value = span;
+                var item = new ToolStripMenuItem(PowerPlan.Label(value)) { Checked = value == now };
+                item.Click += (_, _) =>
+                {
+                    try { PowerPlan.Set(what, onAc, value); idleValid = false; }
+                    catch (Exception ex) { Logger.WriteLine("Compact idle: " + ex.Message); }
+                    Invalidate();
+                };
+                menu.Items.Add(item);
+            }
+            menu.Closed += (_, _) => { if (!ContainsFocus) Activate(); };
+            menu.Show(this, at);
         }
 
         private void ShowGpuMenu(Point at)

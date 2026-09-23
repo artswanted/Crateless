@@ -15,9 +15,6 @@ namespace GHelper.UI.Nebula.Pages
         private static readonly bool discrete = AppConfig.IsChargeLimit6080();
         private static readonly int[] discreteValues = { 60, 80, 100 };
 
-        /// <summary>Idle timeouts offered in the menus, in seconds. 0 is "never".</summary>
-        private static readonly int[] spans = { 0, 60, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600, 7200, 10800, 14400, 18000 };
-
         private int draft = -1;          // unsaved limit
         private long healthRequested;
 
@@ -150,7 +147,7 @@ namespace GHelper.UI.Nebula.Pages
         {
             var th = c.Theme;
             var rows = IdleRows();
-            float height = 110 + rows.Count * 62 + 44;
+            float height = 110 + rows.Count * 62 + 56 + 44;
             c.Surface(236, top, 818, height);
 
             c.Txt(NebulaText.T("Screen and sleep", "Экран и сон"), 256, top + 30, c.F(15, FontStyle.Bold), th.Text);
@@ -167,10 +164,17 @@ namespace GHelper.UI.Nebula.Pages
             {
                 c.Txt(label, 256, y + 16, c.F(13), th.Text);
                 c.Txt(hint, 256, y + 36, c.F(11), th.Faint);
-                Choice(c, 640, y - 4, 190, Span(Idle(what, true)), "battery:idle:" + what + ":ac", Idle(what, true) >= 0);
-                Choice(c, 844, y - 4, 190, Span(Idle(what, false)), "battery:idle:" + what + ":dc", Idle(what, false) >= 0);
+                Choice(c, 640, y - 4, 190, PowerPlan.Label(Idle(what, true)), "battery:idle:" + what + ":ac", Idle(what, true) >= 0);
+                Choice(c, 844, y - 4, 190, PowerPlan.Label(Idle(what, false)), "battery:idle:" + what + ":dc", Idle(what, false) >= 0);
                 y += 62;
             }
+
+            bool inCompact = AppConfig.Is("compact_idle");
+            c.Txt(NebulaText.T("Show these in the compact view", "Показывать в компактном виде"), 256, y + 18, c.F(13), th.Text);
+            c.Txt(NebulaText.T("Two more lines in the fly-out, following the power source you are on.",
+                               "Две строки в мини-окне, по текущему источнику питания."), 256, y + 38, c.F(11), th.Faint);
+            c.Toggle(996, y + 1, inCompact, "battery:compactidle");
+            y += 56;
 
             // the screen going dark after the machine has already slept would never be seen
             bool odd = false;
@@ -277,14 +281,6 @@ namespace GHelper.UI.Nebula.Pages
             if (enabled) c.Hit(r, id);
         }
 
-        private static string Span(int seconds)
-        {
-            if (seconds < 0) return "—";
-            if (seconds == 0) return NebulaText.T("Never", "Никогда");
-            if (seconds >= 3600 && seconds % 3600 == 0) return NebulaText.Tf("{0} h", "{0} ч", seconds / 3600);
-            return NebulaText.Tf("{0} min", "{0} мин", seconds / 60);
-        }
-
         public override float ContentHeight => bottom + 20;
 
         public override bool Click(string id, Point at, NebulaForm form)
@@ -299,6 +295,10 @@ namespace GHelper.UI.Nebula.Pages
                     return true;
                 case "battery:report":
                     Task.Run(BatteryControl.BatteryReport);
+                    return true;
+                case "battery:compactidle":
+                    AppConfig.Set("compact_idle", AppConfig.Is("compact_idle") ? 0 : 1);
+                    try { Program.nebulaCompact?.ApplySize(); } catch { }
                     return true;
                 case "battery:rules":
                     PowerRules.SetEnabled(!PowerRules.Enabled);
@@ -321,7 +321,7 @@ namespace GHelper.UI.Nebula.Pages
                 var what = Enum.Parse<PowerPlan.Idle>(parts[2]);
                 bool ac = parts[3] == "ac";
                 int now = Idle(what, ac);
-                Menu(form, at, spans.Select(s => (Span(s), s == now, (Action)(() =>
+                Menu(form, at, PowerPlan.Spans.Select(s => (PowerPlan.Label(s), s == now, (Action)(() =>
                 {
                     if (PowerPlan.Set(what, ac, s)) ReadPlan();
                 }))));
