@@ -240,6 +240,47 @@ namespace GHelper.AutoUpdate
             catch (Exception ex) { Logger.WriteLine(ex.Message); }
         }
 
+        /// <summary>
+        /// Replaces the exe once every copy of it has exited. A running exe cannot be overwritten, but it can be renamed,
+        /// so the old one is moved to .old (deleted on the next start) and the new one takes its name; on failure the
+        /// old exe is put back. Either way the app is started again, and errors go to update.log next to the config.
+        /// </summary>
+        private static string SwapScript(string exe, string zip, int pid)
+        {
+            static string Q(string s) => "'" + s.Replace("'", "''") + "'";
+            string dir = Path.GetDirectoryName(exe) ?? ".";
+            string name = Path.GetFileNameWithoutExtension(exe);
+            string log = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Crateless", "update.log");
+
+            return $@"
+$exe = {Q(exe)}; $zip = {Q(zip)}; $tmp = {Q(Path.Combine(dir, ".crateless-update"))}; $log = {Q(log)}
+function Note($m) {{ try {{ Add-Content -LiteralPath $log -Value ((Get-Date -Format s) + ' ' + $m) }} catch {{}} }}
+Wait-Process -Id {pid} -Timeout 30 -ErrorAction SilentlyContinue
+# an elevated copy may still hold the exe; listing works across elevation where waiting does not
+$until = (Get-Date).AddSeconds(30)
+while ((Get-Process -Name {Q(name)} -ErrorAction SilentlyContinue) -and (Get-Date) -lt $until) {{ Start-Sleep -Milliseconds 500 }}
+try {{
+    $ErrorActionPreference = 'Stop'
+    Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    Expand-Archive -LiteralPath $zip -DestinationPath $tmp -Force
+    $new = Get-ChildItem -LiteralPath $tmp -Filter *.exe | Select-Object -First 1
+    if (-not $new) {{ throw 'no exe in the archive' }}
+    Remove-Item -LiteralPath ($exe + '.old') -Force -ErrorAction SilentlyContinue
+    Move-Item -LiteralPath $exe -Destination ($exe + '.old') -Force
+    try {{ Move-Item -LiteralPath $new.FullName -Destination $exe -Force }}
+    catch {{ Move-Item -LiteralPath ($exe + '.old') -Destination $exe -Force; throw }}
+    Note ('updated ' + $exe)
+}} catch {{
+    Note ('update failed: ' + $_.Exception.Message)
+}} finally {{
+    $ErrorActionPreference = 'Continue'
+    Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue
+}}
+Start-Process -FilePath $exe -WorkingDirectory {Q(dir)}
+";
+        }
+
         public static string EscapeString(string input)
         {
             return Regex.Replace(Regex.Replace(input, @"\[|\]", "`$0"), @"\'", "''");
@@ -286,8 +327,7 @@ namespace GHelper.AutoUpdate
                     return;
                 }
 
-                int pid = Environment.ProcessId;
-                string command = $"$ErrorActionPreference = \"Stop\"; Set-Location -Path '{EscapeString(exeDir)}'; Wait-Process -Id {pid} -Timeout 60 -ErrorAction SilentlyContinue; Expand-Archive \"{zipName}\" -DestinationPath . -Force; Remove-Item \"{zipName}\" -Force; \".\\{exeName}\"; ";
+                string command = SwapScript(exeLocation, zipLocation, Environment.ProcessId);
                 Logger.WriteLine(command);
 
                 try
@@ -297,8 +337,8 @@ namespace GHelper.AutoUpdate
                     cmd.StartInfo.UseShellExecute = false;
                     cmd.StartInfo.CreateNoWindow = true;
                     cmd.StartInfo.FileName = "powershell";
-                    cmd.StartInfo.Arguments = command;
-                    if (ProcessHelper.IsUserAdministrator()) cmd.StartInfo.Verb = "runas";
+                    // encoded, so no quote in a path or in the script is eaten by command-line parsing
+                    cmd.StartInfo.Arguments = "-NoProfile -ExecutionPolicy Bypass -EncodedCommand " + Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(command));
                     cmd.Start();
                 }
                 catch (Exception ex)

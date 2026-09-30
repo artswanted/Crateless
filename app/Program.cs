@@ -572,7 +572,8 @@ namespace GHelper
         static void CleanupLegacyFiles()
         {
             string appDir = Path.GetDirectoryName(Application.ExecutablePath) ?? "";
-            string[] legacyFiles = ["WinRing0x64.sys", "WinRing0x64.dll"];
+            // the exe the updater moved aside, it is free once the new one runs
+            string[] legacyFiles = ["WinRing0x64.sys", "WinRing0x64.dll", Path.GetFileName(Application.ExecutablePath) + ".old"];
 
             foreach (string fileName in legacyFiles)
             {
