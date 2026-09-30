@@ -373,3 +373,6 @@ app/*.lscache
 # private working notes, not part of the repo
 docs/crateless/
 Crateless-Design-Kit-Nebula-v2/
+
+# Local roadmap
+PLAN.md

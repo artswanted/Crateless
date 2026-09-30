@@ -109,7 +109,7 @@ namespace GHelper.UI.Nebula.Pages
             c.Txt(NebulaText.T("Performance mode", "Режим работы"), 256, 169, c.F(15, FontStyle.Bold), th.Text);
             c.Txt(NebulaText.T("Limits are stored separately for each mode.", "Параметры сохраняются отдельно для каждого режима."), 256, 190, c.F(11), th.Muted);
             if (RecommendedProfiles.IsAvailable)
-                c.Button(1034 - 190, 153, 190, 36, NebulaText.T("Recommended", "Рекомендуемые"), "power:recommended", primary: false);
+                c.Button(1034 - 190, 153, 190, 36, NebulaText.T("Recommended  ⌄", "Рекомендуемые  ⌄"), "power:recommended", primary: false);
             var list = Modes.GetList();
             int current = Modes.GetCurrent();
             float mx = 256; float mw = Math.Min(145, (778 - 12 * (list.Count - 1)) / Math.Max(1, list.Count));
@@ -298,8 +298,7 @@ namespace GHelper.UI.Nebula.Pages
                     LoadLimits();
                     return true;
                 case "power:recommended":
-                    RecommendedProfiles.Apply();
-                    LoadLimits();
+                    RecommendedMenu(form, at, LoadLimits);
                     return true;
                 case "power:auto":
                     AppConfig.SetMode("auto_apply_power", AppConfig.IsApplyPower() ? 0 : 1);

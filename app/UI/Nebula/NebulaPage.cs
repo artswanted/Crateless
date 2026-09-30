@@ -42,5 +42,21 @@ namespace GHelper.UI.Nebula
             }
             menu.Show(form, at);
         }
+
+        /// <summary>The "Recommended" button menu shared by the power and cooling pages; `applied` reloads the page after a write.</summary>
+        protected static void RecommendedMenu(NebulaForm form, Point at, Action applied)
+        {
+            bool saved = Mode.RecommendedProfiles.HasSaved;
+            var items = new List<(string, bool, Action)>
+            {
+                (saved ? NebulaText.T("Apply recommended (saved)", "Применить рекомендуемые (сохранённые)")
+                       : NebulaText.T("Apply recommended", "Применить рекомендуемые"),
+                 false, () => { Mode.RecommendedProfiles.Apply(); applied(); }),
+                (NebulaText.T("Save current as recommended", "Сохранить текущие как рекомендуемые"), false, Mode.RecommendedProfiles.SaveCurrent),
+            };
+            if (saved)
+                items.Add((NebulaText.T("Back to built-in recommended", "Вернуть встроенные рекомендуемые"), false, Mode.RecommendedProfiles.ForgetSaved));
+            Menu(form, at, items);
+        }
     }
 }

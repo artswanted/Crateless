@@ -169,7 +169,7 @@ namespace GHelper.UI.Nebula.Pages
             else if (selected >= 0 && curves.TryGetValue(current, out var cur))
                 c.Txt(NebulaText.T("Point", "Точка") + $" {selected + 1}: {cur[selected]} °C → " + Level(cur[selected + Points], current), 124, 922, c.F(12), th.Muted);
             if (RecommendedProfiles.IsAvailable)
-                c.Button(754, 894, 196, 36, NebulaText.T("Recommended", "Рекомендуемые"), "fan:recommended", primary: false);
+                c.Button(754, 894, 196, 36, NebulaText.T("Recommended  ⌄", "Рекомендуемые  ⌄"), "fan:recommended", primary: false);
             c.Button(966, 894, 196, 36, NebulaText.T("Factory profile", "Заводской профиль"), "fan:factory", primary: false);
             c.Button(1180, 894, 214, 36, NebulaText.T("Apply curve", "Применить кривую"), "fan:apply", primary: true, enabled: dirty || !custom);
             c.Txt(NebulaText.T("The curve is handed to BIOS. Direct RPM control is a separate feature and is not part of this editor.",
@@ -322,10 +322,7 @@ namespace GHelper.UI.Nebula.Pages
                     Task.Run(() => Program.modeControl.AutoFans());
                     return true;
                 case "fan:recommended":
-                    RecommendedProfiles.Apply();
-                    dirty = false;
-                    selected = -1;
-                    Refresh(true);
+                    RecommendedMenu(form, at, () => { dirty = false; selected = -1; Refresh(true); });
                     return true;
                 case "fan:factory":
                     foreach (var f in fans) { curves[f] = Load(f, true); AppConfig.SetFanConfig(f, curves[f]); }
