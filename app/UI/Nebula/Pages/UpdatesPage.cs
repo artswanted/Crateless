@@ -39,9 +39,7 @@ namespace GHelper.UI.Nebula.Pages
             biosDone = false;
             loadingBios = loadingDrivers = true;
 
-            string rog = AppConfig.IsROG() ? "&systemCode=rog" : "";
-            string biosUrl = $"https://rog.asus.com/support/webapi/product/GetPDBIOS?website=global&model={model}&cpu={model}{rog}";
-            string driversUrl = $"https://rog.asus.com/support/webapi/product/GetPDDrivers?website=global&model={model}&cpu={model}&osid=52{rog}";
+            var (biosUrl, driversUrl) = AutoUpdate.DriverUpdateCheck.Urls(model);
 
             Fetch(biosUrl, 1, token, list => { bios = list; loadingBios = false; biosDone = true; });
             Fetch(driversUrl, 0, token, list => { drivers = list; loadingDrivers = false; });
@@ -57,7 +55,11 @@ namespace GHelper.UI.Nebula.Pages
                     var list = await controller.FetchUpdates(url, token);
                     done(list);
                     Repaint();
-                    try { controller.ResolveStatus(list, type, biosVersion, token); }
+                    try
+                    {
+                        controller.ResolveStatus(list, type, biosVersion, token);
+                        AutoUpdate.DriverUpdateCheck.Report(type, list);
+                    }
                     catch (OperationCanceledException) { return; }
                     catch (Exception ex) { Logger.WriteLine(ex.Message); }
                     done(list);

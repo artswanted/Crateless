@@ -355,10 +355,13 @@ namespace GHelper.UI.Nebula
             c.Txt("CONTROL CENTER", 226, 28, c.F(9), theme.Faint);
 
             // "update available" chip in the top bar; it opens the updates page
-            if (AutoUpdate.AutoUpdateControl.UpdateAvailable && !AppConfig.Is("skip_updates"))
+            // app release first; otherwise newer BIOS / drivers from the background check
+            if ((AutoUpdate.AutoUpdateControl.UpdateAvailable || AutoUpdate.DriverUpdateCheck.NewCount > 0) && !AppConfig.Is("skip_updates"))
             {
                 string tag = AutoUpdate.AutoUpdateControl.LatestTag;
-                string text = NebulaText.T("Update available", "Доступно обновление") + (tag.Length > 0 ? "  " + tag : "");
+                string text = AutoUpdate.AutoUpdateControl.UpdateAvailable
+                    ? NebulaText.T("Update available", "Доступно обновление") + (tag.Length > 0 ? "  " + tag : "")
+                    : NebulaText.Tf("BIOS / drivers: {0} new", "BIOS и драйверы: новых {0}", AutoUpdate.DriverUpdateCheck.NewCount);
                 var f = c.F(11, FontStyle.Bold);
                 bool hv = hover == "rail:updatechip";
                 float w = c.TextWidth(text, f) + 40;
@@ -419,7 +422,7 @@ namespace GHelper.UI.Nebula
                 if (railExpanded)
                     c.TxtFit(item.title(), 70, y + 30, RailExpanded - 100, 13, active ? FontStyle.Bold : FontStyle.Regular, active ? theme.Accent : theme.Text);
                 // a dot on the updates entry while a newer release is waiting
-                if (item.id == "updates" && AutoUpdate.AutoUpdateControl.UpdateAvailable && !AppConfig.Is("skip_updates"))
+                if (item.id == "updates" && (AutoUpdate.AutoUpdateControl.UpdateAvailable || AutoUpdate.DriverUpdateCheck.NewCount > 0) && !AppConfig.Is("skip_updates"))
                 {
                     using var dot = new SolidBrush(theme.Warning);
                     c.G.FillEllipse(dot, R(railExpanded ? 198 : 46, y + 19, 10, 10));
