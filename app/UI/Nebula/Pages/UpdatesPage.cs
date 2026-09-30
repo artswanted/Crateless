@@ -114,8 +114,14 @@ namespace GHelper.UI.Nebula.Pages
                         : last == DateTime.MinValue ? NebulaText.T("never", "ещё не проверяли")
                         : last.Date == DateTime.Today ? last.ToString("HH:mm")
                         : last.ToString("dd.MM HH:mm");
-            c.Txt(NebulaText.T("Checked automatically every 12 hours from this repo's releases.", "Проверяется автоматически раз в 12 часов по релизам репозитория.")
+            c.Txt(NebulaText.T("Checked automatically from this repo's releases.", "Проверяется автоматически по релизам репозитория.")
                   + "  ·  " + NebulaText.T("Last checked", "Последняя проверка") + ": " + when, 256, y + 76, c.F(10), th.Faint);
+            c.Txt(NebulaText.T("Check", "Проверять"), 928, y + 44, c.F(11), th.Muted, StringAlignment.Far);
+            var ir = c.R(940, y + 24, 150, 32);
+            c.Card(ir, 8, c.IsHover("updates:interval") ? th.Line : th.Raised);
+            c.Txt(IntervalName(AutoUpdate.AutoUpdateControl.IntervalHours), 952, y + 45, c.F(11, FontStyle.Bold), th.Text);
+            c.Txt("⌄", 1076, y + 44, c.F(12, FontStyle.Bold), th.Muted, StringAlignment.Center);
+            c.Hit(ir, "updates:interval");
             c.Txt(NebulaText.T("Notify", "Уведомлять"), 1240, y + 44, c.F(11), th.Muted, StringAlignment.Far);
             c.Toggle(1252, y + 27, !AppConfig.Is("skip_updates"), "updates:notify");
             c.Button(1054, y + 66, 160, 32, AutoUpdate.AutoUpdateControl.Checking ? NebulaText.T("Checking…", "Проверяем…") : NebulaText.T("Check now", "Проверить"), "updates:check", primary: false, enabled: !AutoUpdate.AutoUpdateControl.Checking);
@@ -227,6 +233,13 @@ namespace GHelper.UI.Nebula.Pages
             return y + h;
         }
 
+        private static string IntervalName(int hours) => hours switch
+        {
+            1 => NebulaText.T("Every hour", "Каждый час"),
+            24 => NebulaText.T("Once a day", "Раз в сутки"),
+            _ => NebulaText.Tf("Every {0} hours", hours < 5 ? "Каждые {0} часа" : "Каждые {0} часов", hours),
+        };
+
         private static string Trim(string s, int max) => string.IsNullOrEmpty(s) ? "" : s.Length <= max ? s : s[..(max - 1)] + "…";
 
         public override bool Click(string id, Point at, NebulaForm form)
@@ -241,6 +254,10 @@ namespace GHelper.UI.Nebula.Pages
             switch (id)
             {
                 case "updates:notify": AppConfig.Set("skip_updates", AppConfig.Is("skip_updates") ? 0 : 1); return true;
+                case "updates:interval":
+                    Menu(form, at, AutoUpdate.AutoUpdateControl.IntervalChoices.Select(h => (IntervalName(h), h == AutoUpdate.AutoUpdateControl.IntervalHours,
+                        (Action)(() => AutoUpdate.AutoUpdateControl.IntervalHours = h))));
+                    return true;
                 case "updates:check":
                     Program.settingsForm.UpdateControl?.CheckNow();
                     Load();

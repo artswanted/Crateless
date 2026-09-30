@@ -64,7 +64,16 @@ namespace GHelper.AutoUpdate
         /// <summary>On-demand check without the 12 h throttle and without auto-download (Nebula updates page).</summary>
         public void CheckNow() => Task.Run(() => CheckForUpdatesAsync(false, silent: true));
 
-        /// <summary>Checks this repo's releases shortly after start-up and every 12 hours afterwards.</summary>
+        public static readonly int[] IntervalChoices = { 1, 3, 6, 12, 24 };
+
+        /// <summary>Hours between background release checks, picked on the Nebula updates page.</summary>
+        public static int IntervalHours
+        {
+            get { int h = AppConfig.Get("update_interval", 12); return IntervalChoices.Contains(h) ? h : 12; }
+            set => AppConfig.Set("update_interval", value);
+        }
+
+        /// <summary>Checks this repo's releases whenever the chosen interval has passed since the last successful check, counting across restarts.</summary>
         public void StartBackgroundChecks()
         {
             RestoreState();
@@ -72,10 +81,16 @@ namespace GHelper.AutoUpdate
             Task.Run(async () =>
             {
                 await Task.Delay(TimeSpan.FromSeconds(20));
+                DateTime lastAttempt = DateTime.MinValue;
                 while (true)
                 {
-                    CheckForUpdatesAsync(false, silent: true);
-                    await Task.Delay(TimeSpan.FromHours(12));
+                    // a failed check (offline) is retried after 15 minutes instead of waiting out the whole interval
+                    if (!Checking && DateTime.Now - LastCheck >= TimeSpan.FromHours(IntervalHours) && DateTime.Now - lastAttempt >= TimeSpan.FromMinutes(15))
+                    {
+                        lastAttempt = DateTime.Now;
+                        CheckForUpdatesAsync(false, silent: true);
+                    }
+                    await Task.Delay(TimeSpan.FromMinutes(1));
                 }
             });
         }
@@ -91,8 +106,8 @@ namespace GHelper.AutoUpdate
 
         public void CheckForUpdates()
         {
-            // Run update once per 12 hours
-            if (Math.Abs(DateTimeOffset.Now.ToUnixTimeSeconds() - lastUpdate) < 43200) return;
+            // Run update once per chosen interval
+            if (Math.Abs(DateTimeOffset.Now.ToUnixTimeSeconds() - lastUpdate) < IntervalHours * 3600) return;
             lastUpdate = DateTimeOffset.Now.ToUnixTimeSeconds();
 
             Task.Run(async () =>
