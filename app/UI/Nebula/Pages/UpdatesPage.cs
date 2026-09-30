@@ -31,7 +31,7 @@ namespace GHelper.UI.Nebula.Pages
         private void Load()
         {
             lastLoad = Environment.TickCount64;
-            (biosVersion, model) = AppConfig.GetBiosAndModel();
+            (biosVersion, model) = AutoUpdate.DriverUpdateCheck.BiosAndModel();
             cts.Cancel(); cts.Dispose(); cts = new CancellationTokenSource();
             var token = cts.Token;
             error = "";

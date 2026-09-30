@@ -12,6 +12,14 @@ namespace GHelper.AutoUpdate
         public static bool Checking { get; private set; }
         public static DateTime LastCheck { get; private set; } = DateTime.MinValue;
 
+        /// <summary>BIOS version and the model name the ASUS support site knows this machine by (NUCs go by the short model).</summary>
+        public static (string bios, string model) BiosAndModel()
+        {
+            var (bios, model) = AppConfig.GetBiosAndModel();
+            if (AppConfig.ContainsModel("NUC")) model = AppConfig.GetModelShort();
+            return (bios, model);
+        }
+
         public static (string bios, string drivers) Urls(string model)
         {
             string rog = AppConfig.IsROG() ? "&systemCode=rog" : "";
@@ -48,7 +56,7 @@ namespace GHelper.AutoUpdate
             Checking = true;
             try
             {
-                var (biosVersion, model) = AppConfig.GetBiosAndModel();
+                var (biosVersion, model) = BiosAndModel();
                 var (biosUrl, driversUrl) = Urls(model);
                 var controller = new UpdatesController();
 
