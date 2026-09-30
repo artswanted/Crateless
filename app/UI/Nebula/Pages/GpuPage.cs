@@ -33,10 +33,11 @@ namespace GHelper.UI.Nebula.Pages
         private bool procsLoading;
         private bool procsSupported;
 
-        // iGPU memory (AMD VRAM options or Ally APU memory)
+        // iGPU memory (AMD VRAM options, Ally APU memory or the Intel driver's dedicated segment)
         private int[] vramOptions = Array.Empty<int>();
         private int vramUnitMb;
         private bool apuMemMode;                 // Ally: index-based APU_MEM
+        private bool intelMode;                  // Intel: registry value read by the graphics driver, needs admin
         private static readonly int[] ApuMemGb = { 0, 2, 3, 4, 5, 7, 8, 9, 6 };
         private int vramCurrent = -1, vramDraft = -1;
         private bool vramLoaded;
@@ -125,6 +126,11 @@ namespace GHelper.UI.Nebula.Pages
                         int apu = Program.acpi.GetAPUMem();
                         if (apu >= 0) { apuMemMode = true; vramCurrent = apu; }
                     }
+                    else if (!PawnIO.CpuInfo.IsAMD && Gpu.IntelVram.Init())
+                    {
+                        intelMode = true;
+                        vramCurrent = Gpu.IntelVram.Index;
+                    }
                     vramDraft = vramCurrent;
                 }
                 catch (Exception ex) { Logger.WriteLine("iGPU memory: " + ex.Message); }
@@ -132,12 +138,13 @@ namespace GHelper.UI.Nebula.Pages
             });
         }
 
-        private bool VramSupported => vramCurrent >= 0 && (vramOptions.Length > 0 || apuMemMode);
-        private int VramCount => apuMemMode ? ApuMemGb.Length : vramOptions.Length;
+        private bool VramSupported => vramCurrent >= 0 && (vramOptions.Length > 0 || apuMemMode || intelMode);
+        private int VramCount => apuMemMode ? ApuMemGb.Length : intelMode ? Gpu.IntelVram.Sizes.Length + 1 : vramOptions.Length;
         private string VramLabel(int i)
         {
             if (i == 0) return NebulaText.T("Auto", "Авто");
             if (apuMemMode) return ApuMemGb[i] + " GB";
+            if (intelMode) return Gpu.IntelVram.Sizes[i - 1] + " GB";
             return ((double)vramOptions[i] * vramUnitMb / 1024).ToString("0.#") + " GB";
         }
         private float VramCardH => VramSupported ? 78 + ((VramCount + 5) / 6) * 46 + 56 : 0;
@@ -260,8 +267,11 @@ namespace GHelper.UI.Nebula.Pages
                 float vh = VramCardH;
                 c.Surface(236, vy, 1158, vh);
                 c.Txt(NebulaText.T("Memory for the integrated GPU", "Память для встроенной графики"), 256, vy + 30, c.F(15, FontStyle.Bold), th.Text);
-                c.Txt(NebulaText.T("Fixed share of RAM reserved for the iGPU. Auto lets the system decide. Takes effect after a restart.",
-                                   "Фиксированная доля ОЗУ под встроенную графику. «Авто» оставляет выбор системе. Применяется после перезагрузки."), 256, vy + 51, c.F(11), th.Faint);
+                c.Txt(intelMode
+                        ? NebulaText.T("Share of RAM the Intel driver may dedicate to the iGPU. Auto keeps the driver default. Needs administrator rights, takes effect after a restart.",
+                                       "Доля ОЗУ, которую драйвер Intel может выделить встроенной графике. «Авто» — значение драйвера. Нужны права администратора, применяется после перезагрузки.")
+                        : NebulaText.T("Fixed share of RAM reserved for the iGPU. Auto lets the system decide. Takes effect after a restart.",
+                                       "Фиксированная доля ОЗУ под встроенную графику. «Авто» оставляет выбор системе. Применяется после перезагрузки."), 256, vy + 51, c.F(11), th.Faint);
                 float bx = 256, by = vy + 78; int col = 0;
                 for (int i = 0; i < VramCount; i++)
                 {
@@ -341,9 +351,12 @@ namespace GHelper.UI.Nebula.Pages
             if (id == "gpu:vram:apply")
             {
                 if (vramDraft < 0 || vramDraft == vramCurrent) return true;
+                // the value lives under HKLM; the app restarts elevated and the choice is made again there
+                if (intelMode && !Helpers.ProcessHelper.IsUserAdministrator()) { Helpers.ProcessHelper.RunAsAdmin(); return true; }
                 try
                 {
-                    if (apuMemMode) Program.acpi.SetAPUMem(vramDraft);
+                    if (intelMode) Gpu.IntelVram.SetIndex(vramDraft);
+                    else if (apuMemMode) Program.acpi.SetAPUMem(vramDraft);
                     else { Program.acpi.SetVramMem(vramOptions[vramDraft]); AppConfig.Set("vram_mem", vramOptions[vramDraft]); }
                     vramCurrent = vramDraft;
                 }
