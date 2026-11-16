@@ -19,7 +19,7 @@
     <OutputPath>bin\x64\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\x64\$(Configuration)\</IntermediateOutputPath>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <AssemblyVersion>0.6.1</AssemblyVersion>
+    <AssemblyVersion>0.7.0</AssemblyVersion>
     <NoWarn>$(NoWarn);WFO1000</NoWarn>
   </PropertyGroup>
 
@@ -79,6 +79,10 @@
          put it in a satellite assembly, where the main assembly never finds it at run time. -->
     <EmbeddedResource Include="Resources\Nebula\*.png;Resources\Nebula\*.jpg;Resources\Nebula\*.json">
       <LogicalName>Nebula.%(Filename)%(Extension)</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\SignalGlass\*.png;Resources\SignalGlass\*.ico;Resources\SignalGlass\*.json">
+      <LogicalName>SignalGlass.%(Filename)%(Extension)</LogicalName>
       <WithCulture>false</WithCulture>
     </EmbeddedResource>
     <EmbeddedResource Include="Pawn\IntelMSR.bin">

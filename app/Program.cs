@@ -140,6 +140,8 @@ namespace GHelper
 
             Modes.InitFullSpeed();
             settingsForm.SetContextMenu();
+            if (UI.UiShell.IsSignalGlass)
+                settingsForm.VisualiseIcon(true);
             trayIcon.MouseClick += TrayIcon_MouseClick;
             trayIcon.MouseMove += TrayIcon_MouseMove;
 
@@ -295,6 +297,11 @@ namespace GHelper
                     if (settingsForm.handheldForm is not null && settingsForm.handheldForm.Text != "")
                         settingsForm.handheldForm.InitTheme();
 
+                    signalForm?.OnThemeChanged();
+                    signalFlyout?.ApplyTheme();
+                    nebulaForm?.Invalidate();
+                    nebulaCompact?.Invalidate();
+
                     break;
             }
         }
@@ -422,6 +429,9 @@ namespace GHelper
 
         public static UI.Nebula.NebulaForm? nebulaForm;
         public static UI.Nebula.NebulaCompactForm? nebulaCompact;
+        public static UI.SignalGlass.SignalGlassForm? signalForm;
+        public static UI.SignalGlass.SignalFlyoutForm? signalFlyout;
+        private static bool pickingShell;
 
         /// <summary>Shows the compact fly-out and remembers it as the tray view.</summary>
         public static void NebulaCompactToggle()
@@ -438,8 +448,82 @@ namespace GHelper
             nebulaForm.ShowPage(page);
         }
 
+        /// <summary>Shows the Signal Glass tray fly-out and remembers it as the tray view.</summary>
+        public static void SignalFlyoutToggle()
+        {
+            AppConfig.Set("nebula_compact", 1);
+            signalFlyout ??= new UI.SignalGlass.SignalFlyoutForm();
+            signalFlyout.Toggle();
+        }
+
+        /// <summary>Shows the Signal Glass shell on the given page id.</summary>
+        public static void SignalPage(string page)
+        {
+            signalForm ??= new UI.SignalGlass.SignalGlassForm();
+            signalForm.ShowPage(page);
+        }
+
+        /// <summary>Switches the active UI shell ("signal", "nebula", "classic") at runtime.</summary>
+        public static void SwitchUiShell(UI.UiShellMode mode, bool openWindow = true)
+        {
+            UI.UiShell.ApplySelection(mode);
+
+            if (mode != UI.UiShellMode.SignalGlass)
+            {
+                if (signalForm is { Visible: true }) signalForm.Hide();
+                if (signalFlyout is { Visible: true }) signalFlyout.Hide();
+            }
+            if (mode != UI.UiShellMode.Nebula)
+            {
+                if (nebulaForm is { Visible: true }) nebulaForm.Hide();
+                if (nebulaCompact is { Visible: true }) nebulaCompact.Hide();
+            }
+            if (mode != UI.UiShellMode.Classic && settingsForm.Visible)
+                settingsForm.Hide();
+
+            settingsForm.SetContextMenu();
+            settingsForm.VisualiseIcon(true);
+
+            if (openWindow)
+                SettingsToggle(checkForFocus: false, trayClick: false);
+        }
+
         public static void SettingsToggle(bool checkForFocus = true, bool trayClick = false)
         {
+            if (UI.UiShell.NeedsFirstLaunchPrompt && !pickingShell)
+            {
+                pickingShell = true;
+                try
+                {
+                    using var picker = new UI.ShellPickerDialog();
+                    var result = picker.ShowDialog();
+                    UI.UiShell.ApplySelection(picker.SelectedMode);
+                    settingsForm.SetContextMenu();
+                    settingsForm.VisualiseIcon(true);
+                    if (result == DialogResult.Cancel)
+                        return;
+                }
+                finally
+                {
+                    pickingShell = false;
+                }
+            }
+
+            if (UI.UiShell.IsSignalGlass)
+            {
+                if (AppConfig.Is("nebula_compact") && trayClick)
+                {
+                    if (signalForm is { Visible: true }) signalForm.Hide();
+                    signalFlyout ??= new UI.SignalGlass.SignalFlyoutForm();
+                    signalFlyout.Toggle();
+                    return;
+                }
+                if (signalFlyout is { Visible: true }) signalFlyout.Hide();
+                signalForm ??= new UI.SignalGlass.SignalGlassForm();
+                signalForm.Toggle();
+                return;
+            }
+
             if (UI.NebulaTheme.IsEnabled)
             {
                 // Nebula shell (config "theme": "nebula"): the classic window stays available

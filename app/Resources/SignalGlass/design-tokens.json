@@ -1,0 +1,118 @@
+{
+  "version": "1.0",
+  "name": "Signal Glass",
+  "units": "DIP at 96 DPI",
+  "themes": {
+    "dark": {
+      "bg": "#10191F",
+      "surface": "#1C2C34",
+      "raised": "#2C414A",
+      "text": "#F3F7F8",
+      "muted": "#BCCBD0",
+      "line": "#607680",
+      "accent": "#81E5C5",
+      "onAccent": "#102D26",
+      "gpu": "#FFB391",
+      "danger": "#FFA7AC",
+      "warning": "#FFD18A",
+      "plot": "#132229"
+    },
+    "light": {
+      "bg": "#E9F0F2",
+      "surface": "#F6FAFB",
+      "raised": "#DCE8EC",
+      "text": "#13282F",
+      "muted": "#445F69",
+      "line": "#768D96",
+      "accent": "#086950",
+      "onAccent": "#FFFFFF",
+      "gpu": "#93431E",
+      "danger": "#A91E36",
+      "warning": "#805000",
+      "plot": "#F4F9FA"
+    }
+  },
+  "font": {
+    "family": "Segoe UI Variable",
+    "fallback": "Segoe UI",
+    "caption": 12,
+    "body": 14,
+    "control": 14,
+    "section": 18,
+    "page": 28,
+    "metric": 40,
+    "numeric": "tabular"
+  },
+  "spacing": [
+    4,
+    8,
+    12,
+    16,
+    24,
+    32,
+    48
+  ],
+  "radius": {
+    "window": 24,
+    "panel": 20,
+    "control": 12,
+    "pill": 22,
+    "plot": 12
+  },
+  "stroke": {
+    "normal": 1,
+    "focus": 2,
+    "icon24": 1.75
+  },
+  "motionMs": {
+    "hover": 100,
+    "press": 80,
+    "navigation": 160,
+    "maximum": 200
+  },
+  "layout": {
+    "window": [
+      1440,
+      1060
+    ],
+    "minimum": [
+      900,
+      640
+    ],
+    "titlebar": 43,
+    "nav": [
+      24,
+      59,
+      1024,
+      56
+    ],
+    "inspector": [
+      1072,
+      59,
+      344,
+      977
+    ],
+    "workspace": [
+      24,
+      131,
+      1024,
+      905
+    ],
+    "gap": 24
+  },
+  "glass": {
+    "panelOpacity": 0.96,
+    "rimTopOpacity": 0.55,
+    "rimBottomOpacity": 0.12,
+    "highlightHeight": 52,
+    "shadowOffset": [
+      0,
+      6
+    ],
+    "shadowOpacity": 0.18,
+    "dynamicRefraction": false,
+    "description": "Opaque-enough cached in-app glass simulation; not Apple native material."
+  },
+  "pollingMs": 1000,
+  "historySeconds": 60
+}

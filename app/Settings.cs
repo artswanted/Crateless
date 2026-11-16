@@ -908,6 +908,24 @@ namespace GHelper
             };
             contextMenuStrip.Items.Add(bwIcon);
 
+            var shellMenu = new ToolStripMenuItem(UI.SignalGlass.SignalText.T("Interface", "Интерфейс"));
+            shellMenu.Margin = padding;
+            var curShell = UI.UiShell.Current;
+
+            var miSignal = new ToolStripMenuItem("Signal Glass") { Checked = curShell == UI.UiShellMode.SignalGlass };
+            miSignal.Click += (_, _) => Program.SwitchUiShell(UI.UiShellMode.SignalGlass);
+            shellMenu.DropDownItems.Add(miSignal);
+
+            var miNebula = new ToolStripMenuItem("Nebula") { Checked = curShell == UI.UiShellMode.Nebula };
+            miNebula.Click += (_, _) => Program.SwitchUiShell(UI.UiShellMode.Nebula);
+            shellMenu.DropDownItems.Add(miNebula);
+
+            var miClassic = new ToolStripMenuItem(UI.SignalGlass.SignalText.T("Classic", "Классический")) { Checked = curShell == UI.UiShellMode.Classic };
+            miClassic.Click += (_, _) => Program.SwitchUiShell(UI.UiShellMode.Classic);
+            shellMenu.DropDownItems.Add(miClassic);
+
+            contextMenuStrip.Items.Add(shellMenu);
+
             contextMenuStrip.Items.Add("-");
 
             var menuOverlay = new ToolStripMenuItem(Properties.Strings.Overlay);
@@ -1177,6 +1195,7 @@ namespace GHelper
         /// <summary>Opens/closes the Extra window (used by the Nebula shell as a V1 bridge).</summary>
         public void ExtraToggle()
         {
+            if (UI.UiShell.IsSignalGlass) { Program.SignalPage("keys"); return; }
             if (UI.NebulaTheme.IsEnabled) { Program.NebulaPage("keyboard"); return; }
             ButtonKeyboard_Click(null, EventArgs.Empty);
         }
@@ -1195,6 +1214,7 @@ namespace GHelper
 
         public void FansToggle(int index = 0)
         {
+            if (UI.UiShell.IsSignalGlass) { Program.SignalPage(index == 1 ? "graphics" : index == 2 ? "power" : "cooling"); return; }
             if (UI.NebulaTheme.IsEnabled) { Program.NebulaPage(index == 1 ? "gpu" : index == 2 ? "power" : "fan"); return; }
             if (fansForm == null || fansForm.Text == "")
             {
@@ -2003,7 +2023,7 @@ namespace GHelper
         }
 
 
-        private (int, bool, bool)? lastIcon;
+        private (int, bool, bool, UI.UiShellMode, bool)? lastIcon;
         private bool isDark = CheckSystemDarkModeStatus();
 
         public void VisualiseIcon(bool themeChange = false)
@@ -2013,16 +2033,22 @@ namespace GHelper
 
             int GPUMode = AppConfig.Get("gpu_mode");
             bool bw = AppConfig.IsBWIcon();
+            var shell = UI.UiShell.Current;
+            bool gpuAuto = AppConfig.Is("gpu_auto");
 
-            if (lastIcon == (GPUMode, isDark, bw)) return;
-            lastIcon = (GPUMode, isDark, bw);
+            if (lastIcon == (GPUMode, isDark, bw, shell, gpuAuto)) return;
+            lastIcon = (GPUMode, isDark, bw, shell, gpuAuto);
 
-            Icon newIcon = GPUMode switch
+            Icon? signalIcon = shell == UI.UiShellMode.SignalGlass
+                ? UI.SignalGlass.SignalAssets.CloneTrayIcon(GPUMode, gpuAuto, isDark)
+                : null;
+
+            Icon newIcon = signalIcon ?? (GPUMode switch
             {
                 AsusACPI.GPUModeEco => bw ? (isDark ? Properties.Resources.light_eco : Properties.Resources.dark_eco) : Properties.Resources.eco,
                 AsusACPI.GPUModeUltimate => bw ? (isDark ? Properties.Resources.light_standard : Properties.Resources.dark_standard) : Properties.Resources.ultimate,
                 _ => bw ? (isDark ? Properties.Resources.light_standard : Properties.Resources.dark_standard) : Properties.Resources.standard,
-            };
+            });
 
             Icon? oldIcon = Program.trayIcon.Icon;
             Program.trayIcon.Icon = newIcon;

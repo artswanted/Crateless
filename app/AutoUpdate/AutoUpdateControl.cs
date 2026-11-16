@@ -59,6 +59,8 @@ namespace GHelper.AutoUpdate
         {
             try { Program.nebulaForm?.BeginInvoke(Program.nebulaForm.Invalidate); } catch { }
             try { Program.nebulaCompact?.BeginInvoke(Program.nebulaCompact.Invalidate); } catch { }
+            try { Program.signalForm?.BeginInvoke(Program.signalForm.Invalidate); } catch { }
+            try { Program.signalFlyout?.BeginInvoke(Program.signalFlyout.Invalidate); } catch { }
         }
 
         /// <summary>On-demand check without the 12 h throttle and without auto-download (Nebula updates page).</summary>
@@ -193,7 +195,7 @@ namespace GHelper.AutoUpdate
                         }
 
                         // the Nebula shell carries a badge, so a background check only raises a tray balloon once per release
-                        if (silent || UI.NebulaTheme.IsEnabled)
+                        if (silent || UI.NebulaTheme.IsEnabled || UI.UiShell.IsSignalGlass)
                         {
                             if (AppConfig.GetString("update_notified") != tag && !AppConfig.Is("skip_updates"))
                             {

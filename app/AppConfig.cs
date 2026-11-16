@@ -27,18 +27,24 @@ public static class AppConfig
     static AppConfig()
     {
         string configName = "config.json";
-        string appPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Crateless");
+        string? customDir = Environment.GetEnvironmentVariable("CRATELESS_CONFIG_DIR");
+        string appPath = !string.IsNullOrEmpty(customDir)
+            ? customDir
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Crateless");
         string startupConfig = Path.Combine(Application.StartupPath.Trim('\\'), configName);
 
-        fallbackConfigFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Crateless", configName);
+        fallbackConfigFile = !string.IsNullOrEmpty(customDir)
+            ? ""
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Crateless", configName);
 
-        configFile = File.Exists(startupConfig) ? startupConfig
+        configFile = !string.IsNullOrEmpty(customDir) ? Path.Combine(customDir, configName)
+        : File.Exists(startupConfig) ? startupConfig
         : ProcessHelper.IsRunningAsSystem() && File.Exists(fallbackConfigFile) ? fallbackConfigFile
         : Path.Combine(appPath, configName);
 
         Directory.CreateDirectory(Path.GetDirectoryName(configFile));
 
-        if (!TryLoadConfig(configFile) && !TryRecoverConfig(configFile) && !TryLoadConfig(configFile + ".bak") && !TryLoadConfig(fallbackConfigFile)) Init();
+        if (!TryLoadConfig(configFile) && !TryRecoverConfig(configFile) && !TryLoadConfig(configFile + ".bak") && (string.IsNullOrEmpty(fallbackConfigFile) || !TryLoadConfig(fallbackConfigFile))) Init();
 
         timer.Elapsed += Timer_Elapsed;
     }

@@ -114,6 +114,8 @@ namespace GHelper.AutoUpdate
         {
             try { Program.nebulaForm?.BeginInvoke(Program.nebulaForm.Invalidate); } catch { }
             try { Program.nebulaCompact?.BeginInvoke(Program.nebulaCompact.Invalidate); } catch { }
+            try { Program.signalForm?.BeginInvoke(Program.signalForm.Invalidate); } catch { }
+            try { Program.signalFlyout?.BeginInvoke(Program.signalFlyout.Invalidate); } catch { }
         }
     }
 }

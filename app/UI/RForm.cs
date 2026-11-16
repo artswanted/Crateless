@@ -56,8 +56,22 @@ namespace GHelper.UI
         {
             flatTheme = AppConfig.GetString("theme")?.ToLower() == "flat";
 
+            var signal = SignalGlass.SignalTheme.Current(darkTheme);
             var nebula = NebulaTheme.Current(darkTheme);
-            if (nebula is not null)
+            if (signal is not null)
+            {
+                buttonMain = signal.Raised;
+                buttonSecond = signal.Surface;
+
+                formBack = signal.Bg;
+                foreMain = signal.Text;
+                borderMain = signal.Line;
+                borderSecond = signal.Line;
+
+                chartMain = signal.Plot;
+                chartGrid = signal.Line;
+            }
+            else if (nebula is not null)
             {
                 buttonMain = nebula.Raised;
                 buttonSecond = nebula.Card;
