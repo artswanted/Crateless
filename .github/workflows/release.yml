@@ -3,6 +3,9 @@ name: Release
 on:
   release:
     types: [ published ]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -21,11 +24,13 @@ jobs:
         dotnet-version: '10.0.x'
 
     - name: Check tag matches version
-      if: github.event_name == 'release'
+      if: github.event_name == 'release' || github.event_name == 'push'
       run: |
-        $version = ([xml](Get-Content app/GHelper.csproj)).Project.PropertyGroup.AssemblyVersion
-        $tag = "${{ github.event.release.tag_name }}"
+        $version = ([xml](Get-Content app/GHelper.csproj)).Project.PropertyGroup.AssemblyVersion.Trim()
+        $tag = if ("${{ github.event_name }}" -eq "release") { "${{ github.event.release.tag_name }}" } else { "${{ github.ref_name }}" }
         if ($tag -ne "v$version") { throw "Tag $tag does not match AssemblyVersion $version" }
+        "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Publish (framework-dependent)
       run: |
@@ -53,11 +58,22 @@ jobs:
           ./Crateless-standalone.exe
 
     - name: Upload release assets
-      if: github.event_name == 'release'
+      if: github.event_name == 'release' || github.event_name == 'push'
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release upload "${{ github.event.release.tag_name }}" ./Crateless.exe ./Crateless.zip ./Crateless-standalone.exe ./Crateless-standalone.zip --clobber
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        gh release view "$env:RELEASE_TAG" *> $null
+        $releaseExists = ($LASTEXITCODE -eq 0)
+        $ErrorActionPreference = $prevEap
+        if ($releaseExists) {
+          gh release upload "$env:RELEASE_TAG" ./Crateless.exe ./Crateless.zip ./Crateless-standalone.exe ./Crateless-standalone.zip --clobber
+          if ($LASTEXITCODE -ne 0) { throw "gh release upload failed with exit code $LASTEXITCODE" }
+        } else {
+          gh release create "$env:RELEASE_TAG" ./Crateless.exe ./Crateless.zip ./Crateless-standalone.exe ./Crateless-standalone.zip --title "Crateless $env:APP_VERSION" --generate-notes
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed with exit code $LASTEXITCODE" }
+        }
 
     - name: Generate SLSA build provenance attestation
       uses: actions/attest-build-provenance@v4
