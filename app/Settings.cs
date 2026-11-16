@@ -209,6 +209,9 @@ namespace GHelper
             labelVersion.Click += LabelVersion_Click;
             labelVersion.ForeColor = Color.FromArgb(128, Color.Gray);
 
+            buttonUiShell.Click += ButtonUiShell_Click;
+            UpdateUiShellLabel();
+
             buttonOptimized.MouseMove += ButtonOptimized_MouseHover;
             buttonOptimized.MouseLeave += ButtonGPU_MouseLeave;
 
@@ -910,19 +913,7 @@ namespace GHelper
 
             var shellMenu = new ToolStripMenuItem(UI.SignalGlass.SignalText.T("Interface", "Интерфейс"));
             shellMenu.Margin = padding;
-            var curShell = UI.UiShell.Current;
-
-            var miSignal = new ToolStripMenuItem("Signal Glass") { Checked = curShell == UI.UiShellMode.SignalGlass };
-            miSignal.Click += (_, _) => Program.SwitchUiShell(UI.UiShellMode.SignalGlass);
-            shellMenu.DropDownItems.Add(miSignal);
-
-            var miNebula = new ToolStripMenuItem("Nebula") { Checked = curShell == UI.UiShellMode.Nebula };
-            miNebula.Click += (_, _) => Program.SwitchUiShell(UI.UiShellMode.Nebula);
-            shellMenu.DropDownItems.Add(miNebula);
-
-            var miClassic = new ToolStripMenuItem(UI.SignalGlass.SignalText.T("Classic", "Классический")) { Checked = curShell == UI.UiShellMode.Classic };
-            miClassic.Click += (_, _) => Program.SwitchUiShell(UI.UiShellMode.Classic);
-            shellMenu.DropDownItems.Add(miClassic);
+            PopulateShellMenu(shellMenu.DropDownItems);
 
             contextMenuStrip.Items.Add(shellMenu);
 
@@ -1121,6 +1112,54 @@ namespace GHelper
                 matrixForm.Show();
             }
 
+        }
+
+        public void UpdateUiShellLabel()
+        {
+            if (InvokeRequired) { Invoke(UpdateUiShellLabel); return; }
+            string label = UI.UiShell.Current switch
+            {
+                UI.UiShellMode.SignalGlass => "Signal Glass",
+                UI.UiShellMode.Nebula => "Nebula",
+                _ => UI.SignalGlass.SignalText.T("Classic", "Классический"),
+            };
+            buttonUiShell.Text = UI.SignalGlass.SignalText.T("Interface", "Дизайн") + ": " + label + " ⌄";
+        }
+
+        private static void PopulateShellMenu(ToolStripItemCollection target)
+        {
+            var cur = UI.UiShell.Current;
+            var items = new (string text, UI.UiShellMode mode)[]
+            {
+                ("Signal Glass", UI.UiShellMode.SignalGlass),
+                ("Nebula", UI.UiShellMode.Nebula),
+                (UI.SignalGlass.SignalText.T("Classic", "Классический"), UI.UiShellMode.Classic),
+            };
+            foreach (var (text, mode) in items)
+            {
+                var mi = new ToolStripMenuItem(text) { Checked = cur == mode };
+                mi.Click += (_, _) => Program.SwitchUiShell(mode);
+                target.Add(mi);
+            }
+        }
+
+        private void ButtonUiShell_Click(object? sender, EventArgs e)
+        {
+            var menu = new CustomContextMenu
+            {
+                BackColor = this.BackColor,
+                ForeColor = this.ForeColor,
+                Renderer = new CustomMenuRenderer(),
+            };
+            PopulateShellMenu(menu.Items);
+            menu.Show(buttonUiShell, new Point(0, buttonUiShell.Height));
+        }
+
+        public void VisualiseMatrixBrightness(int brightness)
+        {
+            if (InvokeRequired) { Invoke(() => VisualiseMatrixBrightness(brightness)); return; }
+            if (brightness >= 0 && brightness < comboMatrix.Items.Count)
+                comboMatrix.SelectedIndex = brightness;
         }
 
         public void VisualiseMatrixRunning(int mode)

@@ -82,6 +82,8 @@ namespace Crateless.Tests
             SupportsGameVisual = true,
             SupportsGamut = true,
             IsOled = true,
+            SupportsMatrixOrSlash = true,
+            IsSlash = true,
             AvailableRefreshRates = new[] { 60, 120, 240 },
             BatteryLimitMin = 40,
             BatteryLimitMax = 100,

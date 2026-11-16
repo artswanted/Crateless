@@ -17,7 +17,6 @@ namespace GHelper.UI.SignalGlass.Pages
         public override bool CanApply => dirty;
         public override bool CanReset => true;
 
-        private string target = "keyboard";
         private AuraMode draftMode;
         private AuraSpeed draftSpeed;
         private Color draftColor;
@@ -87,9 +86,10 @@ namespace GHelper.UI.SignalGlass.Pages
             string speedName = speeds.TryGetValue(draftSpeed, out var sn) ? sn : "Normal";
             int maxBr = Math.Max(1, AppConfig.Get("max_brightness", 3));
 
-            int rows = 7 + (ctx.Caps.IsDynamicLightingActive ? 1 : 0);
-            float panelH = rows * 74f + 32f;
-            ctx.DrawPanel(new RectangleF(x, y, w, panelH));
+            bool hasSpeed = draftMode != AuraMode.AuraStatic && speeds.Count > 0;
+            int kbRows = (ctx.Caps.IsDynamicLightingActive ? 1 : 0) + (hasSpeed ? 5 : 4);
+            float kbPanelH = kbRows * 74f + 32f;
+            ctx.DrawPanel(new RectangleF(x, y, w, kbPanelH));
             float ry = y + 16f;
 
             if (ctx.Caps.IsDynamicLightingActive)
@@ -102,29 +102,6 @@ namespace GHelper.UI.SignalGlass.Pages
                     _ => DynamicLightingHelper.OpenSettings());
             }
 
-            string targetLabel = target == "matrix"
-                ? (ctx.Caps.IsSlash ? "Slash Lighting" : "AniMe Matrix")
-                : SignalText.T("Keyboard", "Клавиатура");
-            ry = ctx.DrawSettingRow(ry, rx, rw,
-                SignalText.T("Target", "Устройство"),
-                SignalText.T("Keyboard / AniMe Matrix / Slash when present", "Клавиатура / AniMe Matrix / Slash при наличии"),
-                targetLabel,
-                "lighting:target",
-                pt =>
-                {
-                    var items = new List<(string, bool, string?, Action)>
-                    {
-                        (SignalText.T("Keyboard", "Клавиатура"), target == "keyboard", null, () => target = "keyboard"),
-                    };
-                    if (ctx.Caps.SupportsMatrixOrSlash)
-                    {
-                        items.Add((ctx.Caps.IsSlash ? "Slash Lighting" : "AniMe Matrix", target == "matrix", null,
-                            () => { target = "matrix"; Program.settingsForm.MatrixToggle(); }));
-                    }
-                    ctx.ShowMenu(pt, items);
-                },
-                showChevron: true);
-
             ry = ctx.DrawSettingRow(ry, rx, rw,
                 SignalText.T("Effect", "Эффект"),
                 SignalText.T("Only effects reported by this device", "Только эффекты данного устройства"),
@@ -134,7 +111,7 @@ namespace GHelper.UI.SignalGlass.Pages
                 enabled: modes.Count > 0,
                 showChevron: modes.Count > 0);
 
-            if (draftMode != AuraMode.AuraStatic && speeds.Count > 0)
+            if (hasSpeed)
             {
                 ry = ctx.DrawSettingRow(ry, rx, rw,
                     SignalText.T("Speed", "Скорость"),
@@ -168,25 +145,77 @@ namespace GHelper.UI.SignalGlass.Pages
                 },
                 showChevron: true);
 
-            ry = ctx.DrawToggleRow(ry, rx, rw,
+            ctx.DrawToggleRow(ry, rx, rw,
                 SignalText.T("During sleep", "Во время сна"),
                 SignalText.T("Keep keyboard lit when sleeping", "Оставлять подсветку во сне"),
                 "lighting:sleep",
                 draftSleep,
-                () => { draftSleep = !draftSleep; dirty = true; });
-
-            bool hasAux = ctx.Caps.SupportsMatrixOrSlash;
-            ctx.DrawSettingRow(ry, rx, rw,
-                "AniMe Matrix / Slash",
-                hasAux ? SignalText.T("Configure auxiliary lid lighting", "Настройка дополнительной подсветки крышки") : SignalText.T("Unavailable on this model", "Недоступно на этой модели"),
-                hasAux ? SignalText.T("Open", "Открыть") : SignalText.T("Not available", "Недоступно"),
-                "lighting:matrix",
-                _ => Program.settingsForm.MatrixToggle(),
-                enabled: hasAux,
-                readOnly: !hasAux,
+                () => { draftSleep = !draftSleep; dirty = true; },
                 drawDivider: false);
 
-            lastContentH = panelH + 16f;
+            y += kbPanelH + 18f;
+
+            // ---- Slash Lighting / AniMe Matrix section --------------------------------------------
+            bool hasAux = ctx.Caps.SupportsMatrixOrSlash || LidLightingHelper.IsSupported;
+            if (hasAux)
+            {
+                bool isSlash = ctx.Caps.IsSlash || LidLightingHelper.IsSlash;
+                string secTitle = isSlash ? "Slash Lighting" : Properties.Strings.AnimeMatrix;
+                var brLabels = LidLightingHelper.BrightnessLabels;
+                int brIdx = LidLightingHelper.CurrentBrightnessIndex();
+                var runModes = LidLightingHelper.ModeLabels(isSlash);
+                int runIdx = Math.Clamp(AppConfig.Get("matrix_running", 0), 0, Math.Max(0, runModes.Count - 1));
+
+                float auxH = 44f + 3 * 74f + 16f;
+                ctx.DrawPanel(new RectangleF(x, y, w, auxH));
+                var hdrFmt = ctx.Rtl ? GlassPainter.FmtRight : GlassPainter.FmtLeft;
+                ctx.Painter.DrawText(ctx.G, secTitle, ctx.Px(rx, y + 18f, rw, 26f),
+                    ctx.Painter.Font(16.5f, ctx.Scale, FontStyle.Bold), ctx.Theme.Text, hdrFmt);
+
+                float ay = y + 50f;
+                ay = ctx.DrawSettingRow(ay, rx, rw,
+                    isSlash ? SignalText.T("Strip brightness", "Яркость полосы") : SignalText.T("Matrix brightness", "Яркость матрицы"),
+                    SignalText.T("Configure auxiliary lid lighting", "Настройка дополнительной подсветки крышки"),
+                    brLabels[brIdx],
+                    "lighting:slash:bright",
+                    pt => ctx.ShowMenu(pt, brLabels.Select((lbl, idx) => (lbl, idx == brIdx, (string?)null, (Action)(() => LidLightingHelper.SetBrightness(idx))))),
+                    showChevron: true);
+
+                string modeCur = runModes.Count > 0 ? runModes[Math.Clamp(runIdx, 0, runModes.Count - 1)] : "—";
+                ay = ctx.DrawSettingRow(ay, rx, rw,
+                    isSlash ? SignalText.T("Strip mode", "Режим полосы") : SignalText.T("Matrix mode", "Режим матрицы"),
+                    secTitle,
+                    modeCur,
+                    "lighting:slash:mode",
+                    pt => ctx.ShowMenu(pt, runModes.Select((lbl, idx) => (lbl, idx == runIdx, (string?)null, (Action)(() => LidLightingHelper.SetMode(idx))))),
+                    enabled: runModes.Count > 0,
+                    showChevron: runModes.Count > 0);
+
+                ctx.DrawSettingRow(ay, rx, rw,
+                    SignalText.T("Advanced panel", "Дополнительно"),
+                    SignalText.T("Animation, audio & GIF settings", "Настройки анимации, аудио и параметров"),
+                    isSlash ? "Slash" : "Matrix",
+                    "lighting:matrix",
+                    _ => LidLightingHelper.OpenDevicePanel(),
+                    drawDivider: false);
+
+                lastContentH = kbPanelH + 18f + auxH + 20f;
+            }
+            else
+            {
+                float unavH = 74f + 24f;
+                ctx.DrawPanel(new RectangleF(x, y, w, unavH));
+                ctx.DrawSettingRow(y + 12f, rx, rw,
+                    "AniMe Matrix / Slash",
+                    SignalText.T("Unavailable on this model", "Недоступно на этой модели"),
+                    SignalText.T("Not available", "Недоступно"),
+                    "lighting:matrix",
+                    null,
+                    enabled: false,
+                    readOnly: true,
+                    drawDivider: false);
+                lastContentH = kbPanelH + 18f + unavH + 20f;
+            }
 
             if (showColorModal)
                 PaintColorModal(ctx);

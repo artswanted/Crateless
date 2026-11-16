@@ -57,6 +57,7 @@ namespace Crateless.Tests
             Run("FanCurveValidator_Monotonicity_ThermalFloor", TestFanCurveValidator);
             Run("SignalLayout_Responsive_RTL_DPI", TestSignalLayout);
             Run("ShellPickerDialog_Render_And_Accessibility", TestShellPickerDialog);
+            Run("LidLightingHelper_SlashAndMatrixMetadata", TestSlashAndClassicShellControl);
             Run("MockSignalBackend_States_Forms_And_Stress500", TestFormsStatesAccessibilityAndStress);
 
             Console.WriteLine();
@@ -343,6 +344,12 @@ namespace Crateless.Tests
             Assert(hasSignal && hasConfirm, "Picker UIA contains Signal Glass option and Confirm button");
         }
 
+        private static void TestSlashAndClassicShellControl()
+        {
+            AssertEqual(4, LidLightingHelper.BrightnessLabels.Length, "Lid brightness levels");
+            Assert(LidLightingHelper.ModeLabels().Count >= 6, "Lid mode labels non-empty");
+        }
+
         private static void TestFormsStatesAccessibilityAndStress()
         {
             var mock = new MockSignalBackend();
@@ -429,6 +436,7 @@ namespace Crateless.Tests
                     using var bmp = RenderControl(form);
                     if (target == "overview") SaveShot(form, "02-overview-dark-1440.png");
                     if (target == "cooling") SaveShot(form, "06-cooling-dark.png");
+                    if (target == "lighting") SaveShot(form, "10-lighting-slash-dark.png");
                     if (target == "wallpapers") SaveShot(form, "09-wallpapers-dark.png");
                     if (target == "settings") SaveShot(form, "07-settings-dark.png");
                 }

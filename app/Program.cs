@@ -482,6 +482,7 @@ namespace GHelper
                 settingsForm.Hide();
 
             settingsForm.SetContextMenu();
+            settingsForm.UpdateUiShellLabel();
             settingsForm.VisualiseIcon(true);
 
             if (openWindow)

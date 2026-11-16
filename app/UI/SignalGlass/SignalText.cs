@@ -141,6 +141,12 @@ namespace GHelper.UI.SignalGlass
                 ["Nothing to display. Click Reload to try again."] = "Пока пусто. Нажмите «Обновить», чтобы загрузить с asus.com.",
                 ["{0} wallpapers · Pictures\\ROG Wallpapers"] = "Обоев: {0} · Изображения\\ROG Wallpapers",
                 ["{0} sizes"] = "размеров: {0}",
+                ["Strip brightness"] = "Яркость полосы",
+                ["Strip mode"] = "Режим полосы",
+                ["Advanced panel"] = "Дополнительно",
+                ["Matrix brightness"] = "Яркость матрицы",
+                ["Matrix mode"] = "Режим матрицы",
+                ["Animation, audio & GIF settings"] = "Настройки анимации, аудио и параметров",
             },
             ["de"] = new()
             {

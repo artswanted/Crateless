@@ -11,6 +11,7 @@ namespace GHelper.UI.Nebula.Pages
         public override string Id => "light";
         public override string Title => NebulaText.T("Lighting", "Персонализация");
         public override string Subtitle => NebulaText.T("Technology with your character.", "Технологии с твоим характером.");
+        public override float ContentHeight => LidLightingHelper.IsSupported ? 1135f : 1013f;
 
         private static readonly Color[] Presets =
         {
@@ -83,15 +84,15 @@ namespace GHelper.UI.Nebula.Pages
             }
 
             // ---- effect panel ----------------------------------------------------------------------
-            c.Surface(934, 161, 460, 649);
+            var speeds = SafeSpeeds();
+            bool hasSpeed = speeds.Count > 0 && mode != AuraMode.AuraStatic;
+            c.Surface(934, 161, 460, hasSpeed ? 660 : 610);
             c.Txt(NebulaText.T("Effect settings", "Настройка эффекта"), 962, 200, c.F(21, FontStyle.Bold, true), th.Text);
 
             c.Txt(NebulaText.T("EFFECT", "ЭФФЕКТ"), 962, 250, c.F(11, FontStyle.Bold), th.Faint);
             DropRow(c, 962, 270, 404, modeName, "light:mode");
 
             float y = 351;
-            var speeds = SafeSpeeds();
-            bool hasSpeed = speeds.Count > 0 && mode != AuraMode.AuraStatic;
             if (hasSpeed)
             {
                 c.Txt(NebulaText.T("SPEED", "СКОРОСТЬ"), 962, y, c.F(11, FontStyle.Bold), th.Faint);
@@ -140,15 +141,6 @@ namespace GHelper.UI.Nebula.Pages
 
             c.Txt(NebulaText.T("Keep lit in sleep", "Подсветка во сне"), 962, y, c.F(14), th.Text);
             c.Toggle(1326, y - 16, AppConfig.Is("keyboard_sleep"), "light:sleep");
-            y += 79;
-
-            bool matrix = Program.settingsForm.matrixControl?.IsValid ?? false;
-            if (matrix)
-            {
-                bool slash = Program.settingsForm.matrixControl!.IsSlash;
-                c.Txt(slash ? "Slash Lighting" : "AniMe Matrix", 962, y, c.F(15, FontStyle.Bold), th.Text);
-                c.Button(962, y + 32, 404, 36, NebulaText.T("Open device panel", "Открыть панель устройства"), "light:matrix", primary: false);
-            }
 
             // ---- devices bar ---------------------------------------------------------------------
             c.Txt(NebulaText.T("ONE PALETTE. EVERY DEVICE.", "ОДНА ПАЛИТРА. ВСЕ УСТРОЙСТВА."), 124, 899, c.F(11, FontStyle.Bold), th.Faint);
@@ -157,6 +149,26 @@ namespace GHelper.UI.Nebula.Pages
             c.Txt(NebulaText.T("Laptop keyboard", "Клавиатура ноутбука"), 193, 963, c.F(15, FontStyle.Bold), th.Text);
             c.Txt(NebulaText.T("External keyboard and mouse follow device support", "Внешняя клавиатура и мышь — по поддержке устройства"), 550, 963, c.F(12), th.Muted);
             c.Button(1180, 938, 188, 36, NebulaText.T("Devices", "Устройства"), "light:devices", primary: false);
+
+            // ---- Slash Lighting / AniMe Matrix ---------------------------------------------------
+            if (LidLightingHelper.IsSupported)
+            {
+                bool slash = LidLightingHelper.IsSlash;
+                var brLabels = LidLightingHelper.BrightnessLabels;
+                int brIdx = LidLightingHelper.CurrentBrightnessIndex();
+                var runModes = LidLightingHelper.ModeLabels();
+                int runIdx = LidLightingHelper.CurrentModeIndex();
+
+                float my = 1009;
+                c.Surface(124, my, 1270, 92);
+                c.IconAt("light", 148, my + 34, 24, true);
+                c.Txt(slash ? "Slash Lighting" : "AniMe Matrix", 193, my + 42, c.F(15, FontStyle.Bold), th.Text);
+                c.Txt(NebulaText.T("Lid strip brightness and effect", "Яркость и режим полосы на крышке"), 193, my + 66, c.F(11), th.Muted);
+
+                DropRow(c, 560, my + 28, 220, brLabels[brIdx], "light:matrix_br");
+                DropRow(c, 796, my + 28, 368, runModes.Count > 0 ? runModes[runIdx] : "—", "light:matrix_mode");
+                c.Button(1180, my + 28, 188, 36, LidLightingHelper.ButtonTitle, "light:matrix", primary: false);
+            }
         }
 
         private static void DropRow(NebulaCanvas c, float x, float y, float w, string value, string id)
@@ -226,7 +238,21 @@ namespace GHelper.UI.Nebula.Pages
                     AppConfig.Set("keyboard_sleep", AppConfig.Is("keyboard_sleep") ? 0 : 1);
                     Task.Run(Aura.ApplyPower);
                     return true;
-                case "light:matrix": Program.settingsForm.MatrixToggle(); return true;
+                case "light:matrix_br":
+                {
+                    int cur = LidLightingHelper.CurrentBrightnessIndex();
+                    var labels = LidLightingHelper.BrightnessLabels;
+                    Menu(form, at, labels.Select((lbl, idx) => (lbl, idx == cur, (Action)(() => LidLightingHelper.SetBrightness(idx)))));
+                    return true;
+                }
+                case "light:matrix_mode":
+                {
+                    int cur = LidLightingHelper.CurrentModeIndex();
+                    var modes = LidLightingHelper.ModeLabels();
+                    Menu(form, at, modes.Select((lbl, idx) => (lbl, idx == cur, (Action)(() => LidLightingHelper.SetMode(idx)))));
+                    return true;
+                }
+                case "light:matrix": LidLightingHelper.OpenDevicePanel(); return true;
                 case "light:devices": form.ShowPage("mouse"); return true;
                 case "light:dynamic": DynamicLightingHelper.OpenSettings(); return true;
             }

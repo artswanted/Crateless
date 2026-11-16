@@ -141,6 +141,7 @@ namespace GHelper
             buttonEnergySaver = new RButton();
             buttonAmdOled = new RButton();
             buttonArmoury = new RButton();
+            buttonUiShell = new RButton();
             labelVersion = new Label();
             buttonHDRControl = new RButton();
             panelMatrix.SuspendLayout();
@@ -1948,6 +1949,7 @@ namespace GHelper
             panelVersion.Controls.Add(buttonEnergySaver);
             panelVersion.Controls.Add(buttonAmdOled);
             panelVersion.Controls.Add(buttonArmoury);
+            panelVersion.Controls.Add(buttonUiShell);
             panelVersion.Controls.Add(labelVersion);
             panelVersion.Dock = DockStyle.Top;
             panelVersion.Location = new Point(11, 1837);
@@ -2023,8 +2025,30 @@ namespace GHelper
             buttonArmoury.UseVisualStyleBackColor = false;
             buttonArmoury.Visible = false;            
             // 
+            // buttonUiShell
+            // 
+            buttonUiShell.Activated = false;
+            buttonUiShell.BackColor = SystemColors.ControlLight;
+            buttonUiShell.BorderColor = Color.Transparent;
+            buttonUiShell.BorderRadius = 2;
+            buttonUiShell.Cursor = Cursors.Hand;
+            buttonUiShell.Dock = DockStyle.Right;
+            buttonUiShell.FlatAppearance.BorderSize = 0;
+            buttonUiShell.FlatStyle = FlatStyle.Flat;
+            buttonUiShell.Font = new Font("Segoe UI", 8.25F, FontStyle.Bold);
+            buttonUiShell.ForeColor = SystemColors.ControlDark;
+            buttonUiShell.Location = new Point(583, 5);
+            buttonUiShell.Margin = new Padding(6, 0, 0, 0);
+            buttonUiShell.Name = "buttonUiShell";
+            buttonUiShell.Secondary = true;
+            buttonUiShell.Size = new Size(340, 40);
+            buttonUiShell.TabIndex = 41;
+            buttonUiShell.Text = "Interface: Classic ⌄";
+            buttonUiShell.UseVisualStyleBackColor = false;
+            // 
             // labelVersion
             // 
+            labelVersion.AutoSize = true;
             labelVersion.Cursor = Cursors.Hand;
             labelVersion.Dock = DockStyle.Left;
             labelVersion.Font = new Font("Segoe UI", 9F, FontStyle.Underline);
@@ -2033,7 +2057,7 @@ namespace GHelper
             labelVersion.Margin = new Padding(0);
             labelVersion.Name = "labelVersion";
             labelVersion.Padding = new Padding(5, 0, 5, 0);
-            labelVersion.Size = new Size(399, 40);
+            labelVersion.Size = new Size(140, 40);
             labelVersion.TabIndex = 38;
             labelVersion.Text = "v.0";
             labelVersion.TextAlign = ContentAlignment.MiddleLeft;
@@ -2261,6 +2285,7 @@ namespace GHelper
         private RButton buttonEnergySaver;
         private RButton buttonAmdOled;
         private RButton buttonArmoury;
+        private RButton buttonUiShell;
         private RButton buttonHDRControl;
         private Panel panelRearLight;
         private TableLayoutPanel tableLayoutRearLight;
