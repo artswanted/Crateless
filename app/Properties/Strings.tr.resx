@@ -136,7 +136,7 @@
     <value>Eko Modu</value>
   </data>
   <data name="AlertExternalDisplay" xml:space="preserve">
-    <value>Looks like external screen is connected to GPU, disable GPU anyway?</value>
+    <value>Harici ekran, GPU'ya bağlı görünüyor. Yine de GPU devre dışı bırakılsın mı?</value>
   </data>
   <data name="AlertUltimateOff" xml:space="preserve">
     <value>Ultimate Modu kapatmak yeniden başlatmayı gerektirir</value>
@@ -779,6 +779,9 @@ Yine de devam etmek istiyor musunuz?</value>
   <data name="ReadLimits" xml:space="preserve">
     <value>Limitleri oku</value>
   </data>
+  <data name="RearLight" xml:space="preserve">
+    <value>Arka Işık</value>
+  </data>
   <data name="Reset" xml:space="preserve">
     <value>Sıfırla</value>
   </data>
@@ -856,6 +859,9 @@ Yine de devam etmek istiyor musunuz?</value>
   </data>
   <data name="ToggleScreen" xml:space="preserve">
     <value>Ekranı Değiştir</value>
+  </data>
+  <data name="ToggleTouchpad" xml:space="preserve">
+    <value>Toggle Touchpad</value>
   </data>
   <data name="ToggleTouchscreen" xml:space="preserve">
     <value>Dokunmatik Ekranı Değiştir</value>
@@ -1041,7 +1047,7 @@ dizüstünü ısıtmasını ve pili tüketmesini engeller.</value>
     <value>Yer Paylaşımı</value>
   </data>
   <data name="OverlayChart" xml:space="preserve">
-    <value>Chart</value>
+    <value>Çizelge</value>
   </data>
   <data name="OverlayLabels" xml:space="preserve">
     <value>Labels</value>
@@ -1050,13 +1056,13 @@ dizüstünü ısıtmasını ve pili tüketmesini engeller.</value>
     <value>Load</value>
   </data>
   <data name="OverlayModeComplete" xml:space="preserve">
-    <value>Complete</value>
+    <value>Kapsamlı</value>
   </data>
   <data name="OverlayModeFull" xml:space="preserve">
-    <value>Full</value>
+    <value>Tam</value>
   </data>
   <data name="OverlayModeLight" xml:space="preserve">
-    <value>Light</value>
+    <value>Hafif</value>
   </data>
   <data name="OverlayOnlyInGames" xml:space="preserve">
     <value>Yer paylaşımını sadece oyunlarda aç</value>
@@ -1065,7 +1071,7 @@ dizüstünü ısıtmasını ve pili tüketmesini engeller.</value>
     <value>Size</value>
   </data>
   <data name="OverlayTemperatures" xml:space="preserve">
-    <value>Temperatures</value>
+    <value>Sıcaklık dereceleri</value>
   </data>
   <data name="OverlayTransparency" xml:space="preserve">
     <value>Transparency</value>
@@ -1114,5 +1120,8 @@ dizüstünü ısıtmasını ve pili tüketmesini engeller.</value>
   </data>
   <data name="Background" xml:space="preserve">
     <value>Arka Plan</value>
+  </data>
+  <data name="AmbientBacklight" xml:space="preserve">
+    <value>Ortam ışığı sensörü</value>
   </data>
 </root>

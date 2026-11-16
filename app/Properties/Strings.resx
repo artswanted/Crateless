@@ -779,6 +779,9 @@ Do you still want to continue?</value>
   <data name="ReadLimits" xml:space="preserve">
     <value>Read Limits</value>
   </data>
+  <data name="RearLight" xml:space="preserve">
+    <value>Rear Light</value>
+  </data>
   <data name="Reset" xml:space="preserve">
     <value>Reset</value>
   </data>
@@ -857,11 +860,17 @@ Do you still want to continue?</value>
   <data name="ToggleScreen" xml:space="preserve">
     <value>Toggle Screen</value>
   </data>
+  <data name="ToggleTouchpad" xml:space="preserve">
+    <value>Toggle Touchpad</value>
+  </data>
   <data name="ToggleTouchscreen" xml:space="preserve">
     <value>Toggle Touchscreen</value>
   </data>
   <data name="Touchscreen" xml:space="preserve">
     <value>Touchscreen</value>
+  </data>
+  <data name="TrayIconMode" xml:space="preserve">
+    <value>Tray icon by performance mode</value>
   </data>
   <data name="Turbo" xml:space="preserve">
     <value>Turbo</value>
@@ -1006,6 +1015,9 @@ Do you still want to continue?</value>
   </data>
   <data name="AmbientModeResources" xml:space="preserve">
     <value>Ambient mode may increase resource usage</value>
+  </data>
+  <data name="AmbientBacklight" xml:space="preserve">
+    <value>Ambient light sensor</value>
   </data>
   <data name="MouseMotionSync" xml:space="preserve">
     <value>Motion Sync</value>

@@ -179,6 +179,7 @@ namespace GHelper
                 PeripheralsProvider.DetectAllAsusMice();
                 PeripheralsProvider.DetectAllAsusKeyboards();
                 PeripheralsProvider.DetectAllAsusHeadsets();
+                Peripherals.Mouse.Models.StrixArion.Detect();
             });
             PeripheralsProvider.RegisterForDeviceEvents();
 
@@ -252,7 +253,7 @@ namespace GHelper
                 ProcessHelper.KillSmartDisplayControl();
                 bool wasLocked = Aura.sessionLock;
                 Aura.sessionLock = false;
-                Aura.ApplyAura();
+                if (!AppConfig.Is("skip_aura")) Aura.ApplyAura();
                 Task.Delay(2000).ContinueWith(_ =>
                 {
                     ScreenControl.AutoScreen();
@@ -489,6 +490,12 @@ namespace GHelper
                 SettingsToggle(checkForFocus: false, trayClick: false);
         }
 
+        public static bool IsTaskbarTop()
+        {
+            var rect = new Helpers.RECT();
+            return User32.GetWindowRect(Helpers.NativeMethods.FindWindow("Shell_TrayWnd", null), ref rect) && rect.top <= 0 && rect.right - rect.left > rect.bottom - rect.top;
+        }
+
         public static void SettingsToggle(bool checkForFocus = true, bool trayClick = false)
         {
             if (UI.UiShell.NeedsFirstLaunchPrompt && !pickingShell)
@@ -571,18 +578,18 @@ namespace GHelper
                 settingsForm.WindowState = FormWindowState.Normal;
 
                 settingsForm.Location = screen.WorkingArea.Location;
-                settingsForm.Left = screen.WorkingArea.Width - 10 - settingsForm.Width;
-                settingsForm.Top = screen.WorkingArea.Height - 10 - settingsForm.Height;
+                settingsForm.Left = screen.WorkingArea.Right - 10 - settingsForm.Width;
+                settingsForm.Top = IsTaskbarTop() ? screen.WorkingArea.Top + 10 : screen.WorkingArea.Bottom - 10 - settingsForm.Height;
 
                 settingsForm.Show();
                 settingsForm.ShowAll();
 
-                settingsForm.Left = screen.WorkingArea.Width - 10 - settingsForm.Width;
+                settingsForm.Left = screen.WorkingArea.Right - 10 - settingsForm.Width;
 
                 if (AppConfig.IsAlly())
                     settingsForm.Top = Math.Max(10, screen.Bounds.Height - 110 - settingsForm.Height);
                 else
-                    settingsForm.Top = screen.WorkingArea.Height - 10 - settingsForm.Height;
+                    settingsForm.Top = IsTaskbarTop() ? screen.WorkingArea.Top + 10 : screen.WorkingArea.Bottom - 10 - settingsForm.Height;
 
                 settingsForm.VisualiseGPUMode();
             }
@@ -636,6 +643,7 @@ namespace GHelper
                     if (acpi.IsConnected()) acpi.DeviceSet(AsusACPI.BatteryLimit, limit, "Limit");
                     else AsusACPI.DeviceSetWmi(AsusACPI.BatteryLimit, limit);
                 }
+                if (acpi.IsConnected()) Logger.WriteLine("Startup Eco flag : " + acpi.DeviceGet(AsusACPI.GPUEco));
             }
             catch (Exception ex)
             {

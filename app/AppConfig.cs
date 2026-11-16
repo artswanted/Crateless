@@ -247,6 +247,21 @@ public static class AppConfig
         Write();
     }
 
+    public static void Set(string name, Color[] colors)
+    {
+        Set(name, string.Join(",", colors.Select(c => c.ToArgb().ToString("x8"))));
+    }
+
+    public static Color[] GetColors(string name, int count, Color fill)
+    {
+        Color[] colors = Enumerable.Repeat(fill, count).ToArray();
+        string[] stored = GetString(name)?.Split(',') ?? [];
+        for (int i = 0; i < count && i < stored.Length; i++)
+            if (int.TryParse(stored[i], System.Globalization.NumberStyles.HexNumber, null, out int argb))
+                colors[i] = Color.FromArgb(argb);
+        return colors;
+    }
+
     public static void Remove(string name)
     {
         lock (configLock) config.Remove(name);
@@ -411,6 +426,11 @@ public static class AppConfig
         return ContainsModel("TUF") || ContainsModel("TX Gaming") || ContainsModel("TX Air");
     }
 
+    public static bool IsFNNumpad()
+    {
+        return IsTUF() && !ContainsModel("FA401W");
+    }
+
     public static bool IsProArt()
     {
         return ContainsModel("ProArt");
@@ -455,7 +475,7 @@ public static class AppConfig
     // G14 2020 has no aura, but media keys instead
     public static bool NoAura()
     {
-        return (ContainsModel("GA401I") && !ContainsModel("GA401IHR")) || ContainsModel("GA502IU") || ContainsModel("HN7306") || ContainsModel("H7606") || ContainsModel("M6500X");
+        return (ContainsModel("GA401I") && !ContainsModel("GA401IHR")) || ContainsModel("GA502IU") || ContainsModel("HN7306") || ContainsModel("H760") || ContainsModel("H740") || ContainsModel("M6500X");
     }
 
     public static bool MediaKeys()
@@ -495,7 +515,7 @@ public static class AppConfig
 
     public static bool IsOLED()
     {
-        return ContainsModel("OLED") || IsSlash() || ContainsModel("M7600") || ContainsModel("UX64") || ContainsModel("UX34") || ContainsModel("UX53") || ContainsModel("K360") || ContainsModel("X150") || ContainsModel("M340") || ContainsModel("M350") || ContainsModel("K650") || ContainsModel("UM53") || ContainsModel("K660") || ContainsModel("UX84") || ContainsModel("M650") || ContainsModel("M550") || ContainsModel("M540") || ContainsModel("K340") || ContainsModel("K350") || ContainsModel("M140") || ContainsModel("S540") || ContainsModel("S550") || ContainsModel("M7400") || ContainsModel("N650") || ContainsModel("HN7306") || ContainsModel("H760") || ContainsModel("UX5406") || ContainsModel("M5606") || ContainsModel("X513") || ContainsModel("N7400") || ContainsModel("UX760") || ContainsModel("Q530VJ") || ContainsModel("TP3407") || ContainsModel("HT7407") || ContainsModel("3607") || _oledFromRegistry.Value;
+        return ContainsModel("OLED") || IsSlash() || ContainsModel("M7600") || ContainsModel("UX64") || ContainsModel("UX34") || ContainsModel("UX53") || ContainsModel("K360") || ContainsModel("X150") || ContainsModel("M340") || ContainsModel("M350") || ContainsModel("K650") || ContainsModel("UM53") || ContainsModel("K660") || ContainsModel("UX84") || ContainsModel("M650") || ContainsModel("M550") || ContainsModel("M540") || ContainsModel("K340") || ContainsModel("K350") || ContainsModel("M140") || ContainsModel("S540") || ContainsModel("S550") || ContainsModel("M7400") || ContainsModel("N650") || ContainsModel("HN7306") || ContainsModel("H760") || ContainsModel("H740") || ContainsModel("UX5406") || ContainsModel("M5606") || ContainsModel("X513") || ContainsModel("N7400") || ContainsModel("UX760") || ContainsModel("Q530VJ") || ContainsModel("TP3407") || ContainsModel("HT7407") || ContainsModel("3607") || _oledFromRegistry.Value;
     }
 
     private static readonly Lazy<bool> _oledFromRegistry = new(() =>
@@ -525,7 +545,7 @@ public static class AppConfig
 
     public static bool IsELMB()
     {
-        return ContainsModel("G835LX");
+        return ContainsModel("G835LXG") || ContainsModel("G835LWG");
     }
 
     public static bool IsStandardForceFix()
@@ -702,7 +722,7 @@ public static class AppConfig
 
     public static bool NoGpu()
     {
-        return Is("no_gpu") || ContainsModel("UX540") || ContainsModel("M560") || ContainsModel("GZ302") || IsOnlyAIMAX();
+        return Is("no_gpu") || ContainsModel("UX540") || ContainsModel("UX5606") || ContainsModel("M560") || ContainsModel("GZ302") || IsOnlyAIMAX();
     }
 
     public static bool IsOnlyAIMAX()

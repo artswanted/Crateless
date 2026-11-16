@@ -779,6 +779,9 @@
   <data name="ReadLimits" xml:space="preserve">
     <value>قراءة الحدود</value>
   </data>
+  <data name="RearLight" xml:space="preserve">
+    <value>الضوء الخلفي</value>
+  </data>
   <data name="Reset" xml:space="preserve">
     <value>إعادة ضبط</value>
   </data>
@@ -856,6 +859,9 @@
   </data>
   <data name="ToggleScreen" xml:space="preserve">
     <value>تبديل الشاشة</value>
+  </data>
+  <data name="ToggleTouchpad" xml:space="preserve">
+    <value>Toggle Touchpad</value>
   </data>
   <data name="ToggleTouchscreen" xml:space="preserve">
     <value>تبديل شاشة اللمس</value>
@@ -1114,5 +1120,8 @@
   </data>
   <data name="Background" xml:space="preserve">
     <value>الخلفية</value>
+  </data>
+  <data name="AmbientBacklight" xml:space="preserve">
+    <value>مستشعر الإضاءة المحيطة</value>
   </data>
 </root>

@@ -160,6 +160,15 @@ namespace GHelper.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Ambient light sensor.
+        /// </summary>
+        internal static string AmbientBacklight {
+            get {
+                return ResourceManager.GetString("AmbientBacklight", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Ambient mode may increase resource usage.
         /// </summary>
         internal static string AmbientModeResources {
@@ -2196,6 +2205,15 @@ namespace GHelper.Properties {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Rear Light.
+        /// </summary>
+        internal static string RearLight {
+            get {
+                return ResourceManager.GetString("RearLight", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Overlay.
         /// </summary>
         internal static string Overlay {
@@ -2700,6 +2718,15 @@ namespace GHelper.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Toggle Touchpad.
+        /// </summary>
+        internal static string ToggleTouchpad {
+            get {
+                return ResourceManager.GetString("ToggleTouchpad", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Toggle Touchscreen.
         /// </summary>
         internal static string ToggleTouchscreen {
@@ -2714,6 +2741,15 @@ namespace GHelper.Properties {
         internal static string Touchscreen {
             get {
                 return ResourceManager.GetString("Touchscreen", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Tray icon by performance mode.
+        /// </summary>
+        internal static string TrayIconMode {
+            get {
+                return ResourceManager.GetString("TrayIconMode", resourceCulture);
             }
         }
         

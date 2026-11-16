@@ -44,6 +44,7 @@ namespace GHelper
         public Slash? slashForm;
         public Fans? fansForm;
         public Extra? extraForm;
+        public AuraKeys? auraKeysForm;
         public Updates? updatesForm;
         public Handheld? handheldForm;
         public OverlayConfig? overlayForm;
@@ -93,6 +94,7 @@ namespace GHelper
             labelSreen.Text = Properties.Strings.LaptopScreen;
             UpdateKeyboardLabel();
             labelMatrix.Text = Properties.Strings.AnimeMatrix;
+            labelRearLight.Text = Properties.Strings.RearLight;
             labelBatteryTitle.Text = Properties.Strings.BatteryChargeLimit;
 
             checkStartup.Text = Properties.Strings.RunOnStartup;
@@ -329,7 +331,7 @@ namespace GHelper
 
         private void ButtonEnergySaver_Click(object? sender, EventArgs e)
         {
-            KeyboardHook.KeyKeyPress(Keys.LWin, Keys.A);
+            PowerNative.SetEnergySaver(false);
         }
 
         private void LabelBacklight_Click(object? sender, EventArgs e)
@@ -430,6 +432,10 @@ namespace GHelper
 
             panelGamma.Visible = true;
             tableVisual.Visible = true;
+
+            comboVisual.SelectedValueChanged -= ComboVisual_SelectedValueChanged;
+            comboColorTemp.SelectedValueChanged -= ComboVisual_SelectedValueChanged;
+            comboGamut.SelectedValueChanged -= ComboGamut_SelectedValueChanged;
 
             var visualValue = (SplendidCommand)AppConfig.Get("visual", (int)VisualControl.GetDefaultVisualMode());
             var colorTempValue = AppConfig.Get("color_temp", VisualControl.DefaultColorTemp);
@@ -676,8 +682,9 @@ namespace GHelper
                 return;
             }
 
-            Left = Screen.FromControl(this).WorkingArea.Width - 10 - Width;
-            Top = Screen.FromControl(this).WorkingArea.Height - 10 - Height;
+            var screen = Screen.FromControl(this);
+            Left = screen.WorkingArea.Right - 10 - Width;
+            Top = Program.IsTaskbarTop() ? screen.WorkingArea.Top + 10 : screen.WorkingArea.Bottom - 10 - Height;
         }
 
         private void PanelBattery_MouseEnter(object? sender, EventArgs e)
@@ -807,7 +814,10 @@ namespace GHelper
                         case 1:
                             Logger.WriteLine("Monitor Power On");
                             GPUModeControl.suspended = false;
+                            Thread.Sleep(1000);
                             if (!Program.SetAutoModes(wakeup: true)) BatteryControl.AutoBattery();
+                            Task.Delay(2000).ContinueWith(_ => InputDispatcher.InitFNLock());
+                            PeripheralsProvider.RestoreKeyboardLighting();
                             Program.hardwareOverlay?.ResumeForDisplayOn();
                             break;
                         case 2:
@@ -916,6 +926,17 @@ namespace GHelper
             PopulateShellMenu(shellMenu.DropDownItems);
 
             contextMenuStrip.Items.Add(shellMenu);
+
+            var modeIcon = new ToolStripMenuItem(Properties.Strings.TrayIconMode);
+            modeIcon.Margin = padding;
+            modeIcon.Checked = AppConfig.Is("icon_mode");
+            modeIcon.Click += (sender, args) =>
+            {
+                modeIcon.Checked = !modeIcon.Checked;
+                AppConfig.Set("icon_mode", modeIcon.Checked ? 1 : 0);
+                VisualiseIcon();
+            };
+            contextMenuStrip.Items.Add(modeIcon);
 
             contextMenuStrip.Items.Add("-");
 
@@ -1290,8 +1311,26 @@ namespace GHelper
             colorDlg.ShowDialog(this);
         }
 
+        public void ToggleAuraKeys()
+        {
+            if (auraKeysForm == null || auraKeysForm.Text == "")
+            {
+                auraKeysForm = new AuraKeys();
+                AddOwnedForm(auraKeysForm);
+            }
+
+            if (auraKeysForm.Visible) auraKeysForm.Close();
+            else auraKeysForm.Show();
+        }
+
         private void ButtonKeyboardColor_Click(object? sender, EventArgs e)
         {
+            if (Aura.Mode == AuraMode.CUSTOM)
+            {
+                ToggleAuraKeys();
+                return;
+            }
+
             SetColorPicker("aura_color", Aura.Color1);
         }
 
@@ -1857,6 +1896,8 @@ namespace GHelper
                     menuItem.Checked = ((int)menuItem.Tag == mode);
                 }
             }
+
+            VisualiseIcon();
         }
 
 
@@ -2056,7 +2097,8 @@ namespace GHelper
             {
                 labelTipGPU.Visible = false;
                 labelTipScreen.Visible = false;
-                Top = 5;
+                PerformLayout();
+                if (Top < 0) Top = 5;
             }
 
         }
@@ -2070,10 +2112,15 @@ namespace GHelper
             if (Program.trayIcon is null) return;
             if (themeChange) isDark = CheckSystemDarkModeStatus();
 
-            int GPUMode = AppConfig.Get("gpu_mode");
+            int GPUMode = !AppConfig.Is("icon_mode") ? AppConfig.Get("gpu_mode") : Modes.GetCurrentBase() switch
+            {
+                AsusACPI.PerformanceSilent => AsusACPI.GPUModeEco,
+                AsusACPI.PerformanceTurbo or AsusACPI.PerformanceFullSpeed => AsusACPI.GPUModeUltimate,
+                _ => AsusACPI.GPUModeStandard,
+            };
             bool bw = AppConfig.IsBWIcon();
             var shell = UI.UiShell.Current;
-            bool gpuAuto = AppConfig.Is("gpu_auto");
+            bool gpuAuto = !AppConfig.Is("icon_mode") && AppConfig.Is("gpu_auto");
 
             if (lastIcon == (GPUMode, isDark, bw, shell, gpuAuto)) return;
             lastIcon = (GPUMode, isDark, bw, shell, gpuAuto);
@@ -2203,7 +2250,7 @@ namespace GHelper
 
                 Image? baseIcon = m.DeviceType() switch
                 {
-                    PeripheralType.Mouse => Properties.Resources.icons8_maus_48,
+                    PeripheralType.Mouse => ((AsusMouse)m).Icon(),
                     PeripheralType.Keyboard => Properties.Resources.icons8_keyboard_48,
                     PeripheralType.Headset => Properties.Resources.icons8_headphones_48,
                     _ => null,

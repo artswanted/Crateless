@@ -779,6 +779,9 @@ Apakah Anda masih ingin melanjutkan?</value>
   <data name="ReadLimits" xml:space="preserve">
     <value>Baca Batas</value>
   </data>
+  <data name="RearLight" xml:space="preserve">
+    <value>Lampu Belakang</value>
+  </data>
   <data name="Reset" xml:space="preserve">
     <value>Reset</value>
   </data>
@@ -856,6 +859,9 @@ Apakah Anda masih ingin melanjutkan?</value>
   </data>
   <data name="ToggleScreen" xml:space="preserve">
     <value>Hidupkan/Matikan Layar</value>
+  </data>
+  <data name="ToggleTouchpad" xml:space="preserve">
+    <value>Toggle Touchpad</value>
   </data>
   <data name="ToggleTouchscreen" xml:space="preserve">
     <value>Toggle Touchscreen</value>
@@ -1114,5 +1120,8 @@ memanaskan laptop yang tertidur dan menguras baterai.</value>
   </data>
   <data name="Background" xml:space="preserve">
     <value>Latar</value>
+  </data>
+  <data name="AmbientBacklight" xml:space="preserve">
+    <value>Sensor cahaya sekitar</value>
   </data>
 </root>

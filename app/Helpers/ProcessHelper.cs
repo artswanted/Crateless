@@ -85,8 +85,7 @@ namespace GHelper.Helpers
                             if (stillAlive)
                             {
                                 MessageBox.Show(Properties.Strings.AppAlreadyRunningText, Properties.Strings.AppAlreadyRunning, MessageBoxButtons.OK);
-                                Application.Exit();
-                                return;
+                                Environment.Exit(0);
                             }
                         }
                     }
@@ -240,9 +239,9 @@ namespace GHelper.Helpers
             }
 
             watch.Stop();
-            Logger.WriteLine(name + " " + args);
-            Logger.WriteLine(watch.ElapsedMilliseconds + " ms: " + result);
             cmd.WaitForExit();
+            Logger.WriteLine(name + " " + args);
+            Logger.WriteLine(watch.ElapsedMilliseconds + " ms, exit " + cmd.ExitCode + ": " + result);
 
             return result;
         }
